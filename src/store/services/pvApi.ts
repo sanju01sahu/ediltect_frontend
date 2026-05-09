@@ -58,7 +58,10 @@ interface CreateUserRequest {
 interface UpdateUserRequest {
   id: string;
   name?: string;
+  email?: string;
+  role?: Role;
   managerId?: string | null;
+  password?: string;
 }
 
 interface CreateSolutionRequest {

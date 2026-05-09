@@ -53,21 +53,47 @@ const createUserSchema = z.object({
   }
 });
 
-const updateUserSchema = z.object({
-  id: z.string().trim().min(1, "Please select a user to update."),
-  name: z
-    .string()
-    .optional()
-    .refine((value) => !value || value.trim().length >= 2, "Name must be at least 2 characters."),
-  managerId: z.string().optional()
-});
+const updateUserSchema = z
+  .object({
+    id: z.string().trim().min(1, "Please select a user to update."),
+    name: z
+      .string()
+      .optional()
+      .refine((value) => !value || value.trim().length >= 2, "Name must be at least 2 characters."),
+    email: z
+      .string()
+      .optional()
+      .refine((value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), "Enter a valid email address."),
+    role: z.enum(["ADMIN", "AREA_MANAGER", "AGENT"] as const).optional(),
+    managerId: z.string().optional(),
+    password: z
+      .string()
+      .optional()
+      .refine((value) => !value || value.length >= 12, "Password must be at least 12 characters.")
+      .refine((value) => !value || /[A-Z]/.test(value), "Password must include an uppercase letter.")
+      .refine((value) => !value || /[a-z]/.test(value), "Password must include a lowercase letter.")
+      .refine((value) => !value || /[0-9]/.test(value), "Password must include a number.")
+      .refine((value) => !value || /[^A-Za-z0-9]/.test(value), "Password must include a special character.")
+  })
+  .superRefine((value, ctx) => {
+    if (value.role === "AGENT" && (!value.managerId || value.managerId === "null")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["managerId"],
+        message: "Please assign a manager for an agent user."
+      });
+    }
+  });
 
 type CreateUserForm = z.infer<typeof createUserSchema>;
 
 type UpdateUserForm = {
   id: string;
   name?: string;
+  email?: string;
+  role?: Role;
   managerId?: string;
+  password?: string;
 };
 
 function roleBadge(role: Role): "danger" | "warning" | "default" {
@@ -120,6 +146,7 @@ export default function UsersPage() {
 
   const selectedCreateRole = createForm.watch("role");
   const selectedUpdateId = updateForm.watch("id");
+  const selectedUpdateRole = updateForm.watch("role");
 
   const onCreate = createForm.handleSubmit(async (values) => {
     setBanner(null);
@@ -146,12 +173,15 @@ export default function UsersPage() {
       const response = await updateUser({
         id: values.id,
         name: values.name || undefined,
+        email: values.email || undefined,
+        role: values.role || undefined,
         managerId:
           values.managerId === undefined || values.managerId === ""
             ? undefined
             : values.managerId === "null"
               ? null
               : values.managerId,
+        password: values.password || undefined,
       }).unwrap();
       const message = (response as { message?: string }).message ?? "User updated successfully.";
       setBanner({ type: "success", text: message });
@@ -171,7 +201,10 @@ export default function UsersPage() {
     updateForm.reset({
       id: user.id,
       name: user.name,
+      email: user.email,
+      role: user.role,
       managerId: user.managerId ?? "",
+      password: "",
     });
     setOpenUpdate(true);
   };
@@ -331,7 +364,7 @@ export default function UsersPage() {
         open={openUpdate}
         onClose={() => setOpenUpdate(false)}
         title="Update User"
-        description="Update a person by selecting them from the directory and reassigning their manager by name."
+        description="Admins can update profile details, role, manager assignment, and optionally reset password."
       >
         <form className="space-y-3" onSubmit={onUpdate}>
           <div className="space-y-1">
@@ -356,9 +389,23 @@ export default function UsersPage() {
             <FieldError message={updateForm.formState.errors.name?.message} />
           </div>
           <div className="space-y-1">
+            <Label htmlFor="updateEmail">Email</Label>
+            <Input id="updateEmail" type="email" {...updateForm.register("email")} />
+            <FieldError message={updateForm.formState.errors.email?.message} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="updateRole">Role</Label>
+            <Select id="updateRole" {...updateForm.register("role")}>
+              <option value="AGENT">AGENT</option>
+              <option value="AREA_MANAGER">AREA_MANAGER</option>
+              <option value="ADMIN">ADMIN</option>
+            </Select>
+            <FieldError message={updateForm.formState.errors.role?.message} />
+          </div>
+          <div className="space-y-1">
             <Label htmlFor="updateManager">Manager</Label>
             <Select id="updateManager" {...updateForm.register("managerId")}>
-              <option value="">Keep current manager</option>
+              <option value="">{selectedUpdateRole === "AGENT" ? "Select a manager" : "No manager"}</option>
               <option value="null">Remove manager assignment</option>
               {managers
                 .filter((manager) => manager.id !== selectedUpdateId)
@@ -368,6 +415,17 @@ export default function UsersPage() {
                   </option>
                 ))}
             </Select>
+            <FieldError message={updateForm.formState.errors.managerId?.message} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="updatePassword">Reset Password (optional)</Label>
+            <Input
+              id="updatePassword"
+              type="password"
+              placeholder="Leave blank to keep current password"
+              {...updateForm.register("password")}
+            />
+            <FieldError message={updateForm.formState.errors.password?.message} />
           </div>
           <Button type="submit" className="w-full" disabled={updateState.isLoading}>
             {updateState.isLoading ? (
