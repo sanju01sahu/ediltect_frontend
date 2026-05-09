@@ -146,7 +146,7 @@ export default function ContractsPage() {
       <PageHeader
         title="Contracts"
         description="Installation contracts with automatic base commission generation."
-        action={<Button onClick={() => setOpenModal(true)}>Create Contract</Button>}
+        action={<Button className="w-full sm:w-auto" onClick={() => setOpenModal(true)}>Create Contract</Button>}
       />
 
       {banner ? <Alert className="mb-4" type={banner.type}>{banner.text}</Alert> : null}
@@ -239,7 +239,7 @@ export default function ContractsPage() {
               </Select>
             <FieldError message={form.formState.errors.solutionId?.message} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="installationDate">Installation Date</Label>
               <Input id="installationDate" type="date" {...form.register("installationDate")} />

@@ -146,7 +146,7 @@ export default function ReportsPage() {
 
       <Card className="mb-4">
         <CardHeader title="Monthly Filter" description="Applied to monthly earnings report." />
-        <div className="grid grid-cols-2 gap-3 md:max-w-sm">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:max-w-sm">
           <Input
             type="number"
             value={year}

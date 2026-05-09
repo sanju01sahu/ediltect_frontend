@@ -17,7 +17,7 @@ export function PageHeader({
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>
       </div>
-      {action}
+      {action ? <div className="w-full md:w-auto">{action}</div> : null}
     </header>
   );
 }
@@ -39,4 +39,3 @@ export function StatCard({
     </div>
   );
 }
-

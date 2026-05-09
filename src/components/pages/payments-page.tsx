@@ -156,11 +156,11 @@ export default function PaymentsPage() {
         description="Track effective payment status and settlement transactions."
         action={
           isAdmin ? (
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setOpenTxModal(true)}>
+            <div className="flex w-full flex-wrap gap-2 md:w-auto">
+              <Button className="w-full sm:w-auto" variant="secondary" onClick={() => setOpenTxModal(true)}>
                 Add Transaction
               </Button>
-              <Button onClick={() => setOpenPaymentModal(true)}>Create Payment</Button>
+              <Button className="w-full sm:w-auto" onClick={() => setOpenPaymentModal(true)}>Create Payment</Button>
             </div>
           ) : null
         }
@@ -292,7 +292,7 @@ export default function PaymentsPage() {
             </Select>
             <FieldError message={txForm.formState.errors.paymentId?.message} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="amount">Amount</Label>
               <Input

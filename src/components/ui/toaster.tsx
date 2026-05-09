@@ -50,7 +50,7 @@ export function Toaster() {
   if (!hasToasts) return null;
 
   return (
-    <div className="pointer-events-none fixed right-4 top-4 z-[70] flex w-full max-w-sm flex-col gap-2">
+    <div className="pointer-events-none fixed left-3 right-3 top-3 z-[70] flex w-auto flex-col gap-2 sm:left-auto sm:right-4 sm:top-4 sm:w-full sm:max-w-sm">
       {toasts.map((toast) => (
         <div
           key={toast.id}
@@ -66,4 +66,3 @@ export function Toaster() {
     </div>
   );
 }
-

@@ -12,7 +12,7 @@ export function DataTable({
   return (
     <div className={cn("overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800", className)}>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="min-w-[640px] w-full text-left text-sm">
           <thead className="bg-slate-50 dark:bg-slate-900/60">
             <tr>
               {columns.map((column) => (
@@ -44,4 +44,3 @@ export function DataCell({
 }) {
   return <td className={cn("px-4 py-3 text-slate-700 dark:text-slate-200", className)}>{children}</td>;
 }
-

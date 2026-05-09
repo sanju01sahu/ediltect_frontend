@@ -78,7 +78,7 @@ export function SearchableSelect({
         disabled={disabled}
         aria-expanded={open}
         className={cn(
-          "flex h-10 w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-3 text-left text-sm text-slate-900 outline-none transition focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100",
+          "flex h-11 w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-3 text-left text-sm text-slate-900 outline-none transition focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:h-10",
         )}
         onClick={() => {
           if (open) {
@@ -115,7 +115,7 @@ export function SearchableSelect({
                   <li key={option.value}>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                      className="flex min-h-11 w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 sm:min-h-0"
                       onClick={() => {
                         onChange(option.value);
                         closeDropdown();

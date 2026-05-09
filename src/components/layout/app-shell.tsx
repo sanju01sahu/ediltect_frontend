@@ -61,14 +61,14 @@ export function AppShell({
       <div className="flex w-full">
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-200 bg-white/95 p-5 backdrop-blur transition-transform duration-300 dark:border-slate-800 dark:bg-slate-950/95 lg:static lg:translate-x-0",
+            "fixed inset-y-0 left-0 z-40 w-[min(20rem,88vw)] border-r border-slate-200 bg-white/95 p-4 backdrop-blur transition-transform duration-300 dark:border-slate-800 dark:bg-slate-950/95 sm:p-5 lg:static lg:w-72 lg:translate-x-0",
             mobileOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
           <div className="mb-6 flex items-center justify-between lg:justify-start">
-            <Link href="/" className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+            <Link href="/" className="flex min-w-0 items-center gap-2 text-slate-900 dark:text-slate-100">
               <Image src="/solar.png" alt="Photovoltaic logo" width={28} height={28} className="rounded-md" />
-              <span className="text-sm font-semibold leading-tight tracking-tight">
+              <span className="min-w-0 break-words text-[11px] font-semibold leading-tight tracking-tight sm:text-sm">
                 Photovoltaic Sales Network Management Platform
               </span>
             </Link>
@@ -95,7 +95,7 @@ export function AppShell({
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors",
+                    "flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors sm:min-h-0",
                     active
                       ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
                       : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
@@ -118,19 +118,20 @@ export function AppShell({
         ) : null}
 
         <div className="min-h-screen flex-1 lg:pl-0">
-          <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/70 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/70 md:px-6">
+          <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/70 px-3 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/70 sm:px-4 md:px-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Button variant="secondary" size="sm" className="lg:hidden" onClick={() => setMobileOpen(true)}>
                   <Menu className="h-4 w-4" />
                 </Button>
-                <p className="text-sm text-slate-600 dark:text-slate-300">Operational dashboard</p>
+                <p className="hidden text-sm text-slate-600 dark:text-slate-300 sm:block">Operational dashboard</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <ThemeToggle />
                 <Button variant="secondary" size="sm" onClick={handleLogout} disabled={isLoading}>
                   <LogOut className="h-4 w-4" />
-                  {isLoading ? "Signing out..." : "Sign out"}
+                  <span className="hidden sm:inline">{isLoading ? "Signing out..." : "Sign out"}</span>
+                  <span className="sr-only">{isLoading ? "Signing out" : "Sign out"}</span>
                 </Button>
               </div>
             </div>

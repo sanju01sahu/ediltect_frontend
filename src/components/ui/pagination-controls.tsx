@@ -33,7 +33,7 @@ export function PaginationControls({
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <Select
-          className="h-9 w-[88px]"
+          className="h-11 w-[88px] sm:h-9"
           value={String(pageSize)}
           onChange={(event) => onPageSizeChange(Number(event.target.value))}
           aria-label="Rows per page"

@@ -227,7 +227,7 @@ export default function UsersPage() {
         description="Manage hierarchy, roles, and team assignments."
         action={
           isAdmin ? (
-            <Button onClick={() => setOpenCreate(true)}>
+            <Button className="w-full sm:w-auto" onClick={() => setOpenCreate(true)}>
               <UserPlus className="h-4 w-4" />
               Create User
             </Button>

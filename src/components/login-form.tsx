@@ -65,15 +65,17 @@ export default function LoginForm() {
       <div className="mx-auto flex w-full max-w-6xl items-center justify-end">
         <ThemeToggle />
       </div>
-      <div className="mx-auto mt-6 grid w-full max-w-6xl items-stretch gap-6 lg:grid-cols-2">
-        <Card className="relative overflow-hidden border-0 bg-slate-900 p-8 text-white shadow-2xl dark:bg-slate-950">
+      <div className="mx-auto mt-6 grid w-full max-w-6xl items-stretch gap-4 sm:gap-6 lg:grid-cols-2">
+        <Card className="relative overflow-hidden border-0 bg-slate-900 p-5 text-white shadow-2xl dark:bg-slate-950 sm:p-8">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(56,189,248,.35),transparent_30%),radial-gradient(circle_at_15%_80%,rgba(245,158,11,.22),transparent_35%)]" />
           <div className="relative">
             <div className="flex items-center gap-2">
               <Image src="/solar.png" alt="Photovoltaic logo" width={24} height={24} className="rounded-md" />
-              <p className="text-xs uppercase tracking-[0.22em] text-sky-300">Photovoltaic Sales Network Management Platform</p>
+              <p className="break-words text-[10px] uppercase leading-5 tracking-[0.14em] text-sky-300 sm:text-xs sm:tracking-[0.22em]">
+                Photovoltaic Sales Network Management Platform
+              </p>
             </div>
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight">Commercial-grade control for solar sales teams</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Commercial-grade control for solar sales teams</h1>
             <p className="mt-4 max-w-lg text-slate-300">
               Manage users, solutions, contracts, commissions, bonuses, payments, and reports in one premium workspace.
             </p>
@@ -86,7 +88,7 @@ export default function LoginForm() {
           </div>
         </Card>
 
-        <Card className="p-8">
+        <Card className="p-5 sm:p-8">
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Sign in to your workspace</h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Use your backend credentials to continue.</p>
 

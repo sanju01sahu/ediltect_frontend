@@ -185,11 +185,11 @@ export default function SolutionsPage() {
         description="Versioned pricing and commission plans."
         action={
           isAdmin ? (
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setOpenVersionModal(true)}>
+            <div className="flex w-full flex-wrap gap-2 md:w-auto">
+              <Button className="w-full sm:w-auto" variant="secondary" onClick={() => setOpenVersionModal(true)}>
                 New Version
               </Button>
-              <Button onClick={() => setOpenSolutionModal(true)}>New Solution</Button>
+              <Button className="w-full sm:w-auto" onClick={() => setOpenSolutionModal(true)}>New Solution</Button>
             </div>
           ) : null
         }
@@ -375,7 +375,7 @@ export default function SolutionsPage() {
             />
             <FieldError message={versionForm.formState.errors.solutionId?.message} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="price">Price</Label>
               <Input
@@ -397,7 +397,7 @@ export default function SolutionsPage() {
               <FieldError message={versionForm.formState.errors.baseCommission?.message} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="validFrom">Valid From</Label>
               <Input id="validFrom" type="date" {...versionForm.register("validFrom")} />
@@ -409,8 +409,8 @@ export default function SolutionsPage() {
               <FieldError message={versionForm.formState.errors.validTo?.message} />
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-            <input type="checkbox" {...versionForm.register("retroactive")} />
+          <label className="flex min-h-11 items-center gap-2 text-sm text-slate-600 dark:text-slate-300 sm:min-h-0">
+            <input className="h-5 w-5" type="checkbox" {...versionForm.register("retroactive")} />
             Apply retroactive recalculation
           </label>
           <Button className="w-full" type="submit" disabled={versionState.isLoading}>
