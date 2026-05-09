@@ -22,7 +22,6 @@ import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { showToast } from "@/lib/toast";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
-import { Textarea } from "@/components/ui/textarea";
 import { formatCompactId, formatDate, getCustomerDisplayName, getErrorMessage } from "@/lib/utils";
 import {
   useCreateContractMutation,
@@ -37,7 +36,19 @@ const schema = z.object({
   installationDate: z.string().min(1, "Please select an installation date."),
   status: z.enum(["DRAFT", "ACTIVE", "COMPLETED", "CANCELLED"] as const),
   agentId: z.string().optional(),
-  customerDetails: z.string().trim().min(2, "Customer details are required."),
+  customerName: z.string().trim().min(2, "Customer name must be at least 2 characters."),
+  customerPhone: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => !value || /^[0-9+\-()\s]{7,20}$/.test(value), "Enter a valid phone number."),
+  customerEmail: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), "Enter a valid email address."),
+  customerSite: z.string().trim().optional(),
+  customerCity: z.string().trim().optional(),
 });
 
 type ContractForm = z.infer<typeof schema>;
@@ -72,7 +83,11 @@ export default function ContractsPage() {
     resolver: zodResolver(schema),
     defaultValues: {
       status: "ACTIVE",
-      customerDetails: JSON.stringify({ name: "Acme Solar", site: "CA-01" }, null, 2),
+      customerName: "",
+      customerPhone: "",
+      customerEmail: "",
+      customerSite: "",
+      customerCity: "",
     },
   });
 
@@ -91,16 +106,13 @@ export default function ContractsPage() {
       return;
     }
 
-    let customerDetails: unknown;
-    try {
-      customerDetails = JSON.parse(values.customerDetails);
-    } catch {
-      const message = "Customer details must be valid JSON.";
-      form.setError("customerDetails", { type: "manual", message });
-      setBanner({ type: "error", text: message });
-      showToast({ type: "error", title: "Invalid customer details", description: message });
-      return;
-    }
+    const customerDetails = {
+      name: values.customerName.trim(),
+      ...(values.customerPhone?.trim() ? { phone: values.customerPhone.trim() } : {}),
+      ...(values.customerEmail?.trim() ? { email: values.customerEmail.trim() } : {}),
+      ...(values.customerSite?.trim() ? { site: values.customerSite.trim() } : {}),
+      ...(values.customerCity?.trim() ? { city: values.customerCity.trim() } : {}),
+    };
 
     try {
       const response = await createContract({
@@ -116,7 +128,11 @@ export default function ContractsPage() {
       setOpenModal(false);
       form.reset({
         status: "ACTIVE",
-        customerDetails: JSON.stringify({ name: "Acme Solar", site: "CA-01" }, null, 2),
+        customerName: "",
+        customerPhone: "",
+        customerEmail: "",
+        customerSite: "",
+        customerCity: "",
       });
     } catch (error) {
       const message = getErrorMessage(error, "Failed to create contract.");
@@ -208,7 +224,7 @@ export default function ContractsPage() {
         open={openModal}
         onClose={() => setOpenModal(false)}
         title="Create Contract"
-        description="Pick a solution and agent by name so contract creation mirrors a real operations workflow."
+        description="Pick a solution and agent, then fill customer details in simple fields."
       >
         <form className="space-y-3" onSubmit={onSubmit}>
           <div className="space-y-1">
@@ -253,10 +269,32 @@ export default function ContractsPage() {
               <FieldError message={form.formState.errors.agentId?.message} />
             </div>
           ) : null}
-          <div className="space-y-1">
-            <Label htmlFor="customerDetails">Customer Details (JSON)</Label>
-            <Textarea id="customerDetails" className="font-mono" {...form.register("customerDetails")} />
-            <FieldError message={form.formState.errors.customerDetails?.message} />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="customerName">Customer Name</Label>
+              <Input id="customerName" placeholder="Acme Solar Pvt Ltd" {...form.register("customerName")} />
+              <FieldError message={form.formState.errors.customerName?.message} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="customerPhone">Phone (optional)</Label>
+              <Input id="customerPhone" placeholder="+91 9876543210" {...form.register("customerPhone")} />
+              <FieldError message={form.formState.errors.customerPhone?.message} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="customerEmail">Email (optional)</Label>
+              <Input id="customerEmail" placeholder="ops@acme.com" {...form.register("customerEmail")} />
+              <FieldError message={form.formState.errors.customerEmail?.message} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="customerSite">Site / Location (optional)</Label>
+              <Input id="customerSite" placeholder="CA-01" {...form.register("customerSite")} />
+              <FieldError message={form.formState.errors.customerSite?.message} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="customerCity">City (optional)</Label>
+              <Input id="customerCity" placeholder="Hyderabad" {...form.register("customerCity")} />
+              <FieldError message={form.formState.errors.customerCity?.message} />
+            </div>
           </div>
           <Button type="submit" className="w-full" disabled={createState.isLoading}>
             {createState.isLoading ? (
