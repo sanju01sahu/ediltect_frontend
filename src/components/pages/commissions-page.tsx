@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Select } from "@/components/ui/select";
+import { showToast } from "@/lib/toast";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { formatCompactId, formatCurrency, formatDate, getCustomerDisplayName } from "@/lib/utils";
 import {
@@ -99,6 +100,13 @@ export default function CommissionsPage() {
                 onClick={() => {
                   setActiveFilter(userIdFilter || null);
                   setPage(1);
+                  showToast({
+                    type: "info",
+                    title: "Commission filter applied",
+                    description: userIdFilter
+                      ? "Showing commissions for the selected user."
+                      : "Showing commissions for all users.",
+                  });
                 }}
               >
                 Apply
@@ -109,6 +117,11 @@ export default function CommissionsPage() {
                   setUserIdFilter("");
                   setActiveFilter(null);
                   setPage(1);
+                  showToast({
+                    type: "info",
+                    title: "Commission filter cleared",
+                    description: "Showing commissions without user filtering.",
+                  });
                 }}
               >
                 Clear

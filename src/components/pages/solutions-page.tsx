@@ -19,6 +19,7 @@ import { PaginationControls } from "@/components/ui/pagination-controls";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Spinner } from "@/components/ui/spinner";
 import { TableSkeleton } from "@/components/dashboard/table-skeleton";
+import { showToast } from "@/lib/toast";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { formatCompactId, formatCurrency, getErrorMessage } from "@/lib/utils";
 import {
@@ -128,12 +129,16 @@ export default function SolutionsPage() {
     setBanner(null);
     try {
       const created = await createSolution(values).unwrap();
-      setBanner({ type: "success", text: `Created solution ${created.name}.` });
+      const message = (created as { message?: string }).message ?? `Created solution ${created.name}.`;
+      setBanner({ type: "success", text: message });
+      showToast({ type: "success", title: "Solution created", description: message });
       setActiveSolutionId(created.id);
       setOpenSolutionModal(false);
       solutionForm.reset();
     } catch (error) {
-      setBanner({ type: "error", text: getErrorMessage(error, "Failed to create solution.") });
+      const message = getErrorMessage(error, "Failed to create solution.");
+      setBanner({ type: "error", text: message });
+      showToast({ type: "error", title: "Create solution failed", description: message });
     }
   });
 
@@ -148,14 +153,20 @@ export default function SolutionsPage() {
         validTo: values.validTo || undefined,
         retroactive: values.retroactive,
       }).unwrap();
+      const message =
+        (created as { message?: string }).message ??
+        `Version created. Recalculated ${created.recalculatedContracts} contracts.`;
       setBanner({
         type: "success",
-        text: `Version created. Recalculated ${created.recalculatedContracts} contracts.`,
+        text: message,
       });
+      showToast({ type: "success", title: "Solution version created", description: message });
       setActiveSolutionId(values.solutionId);
       setOpenVersionModal(false);
     } catch (error) {
-      setBanner({ type: "error", text: getErrorMessage(error, "Failed to create version.") });
+      const message = getErrorMessage(error, "Failed to create version.");
+      setBanner({ type: "error", text: message });
+      showToast({ type: "error", title: "Create version failed", description: message });
     }
   });
 

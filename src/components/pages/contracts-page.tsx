@@ -19,6 +19,7 @@ import { Modal } from "@/components/ui/modal";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { showToast } from "@/lib/toast";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCompactId, formatDate, getCustomerDisplayName, getErrorMessage } from "@/lib/utils";
@@ -84,26 +85,32 @@ export default function ContractsPage() {
     try {
       customerDetails = JSON.parse(values.customerDetails);
     } catch {
-      setBanner({ type: "error", text: "Customer details must be valid JSON." });
+      const message = "Customer details must be valid JSON.";
+      setBanner({ type: "error", text: message });
+      showToast({ type: "error", title: "Invalid customer details", description: message });
       return;
     }
 
     try {
-      await createContract({
+      const response = await createContract({
         solutionId: values.solutionId,
         installationDate: values.installationDate,
         status: values.status,
         agentId: needsAgent ? values.agentId || undefined : undefined,
         customerDetails,
       }).unwrap();
-      setBanner({ type: "success", text: "Contract created successfully." });
+      const message = (response as { message?: string }).message ?? "Contract created successfully.";
+      setBanner({ type: "success", text: message });
+      showToast({ type: "success", title: "Contract created", description: message });
       setOpenModal(false);
       form.reset({
         status: "ACTIVE",
         customerDetails: JSON.stringify({ name: "Acme Solar", site: "CA-01" }, null, 2),
       });
     } catch (error) {
-      setBanner({ type: "error", text: getErrorMessage(error, "Failed to create contract.") });
+      const message = getErrorMessage(error, "Failed to create contract.");
+      setBanner({ type: "error", text: message });
+      showToast({ type: "error", title: "Create contract failed", description: message });
     }
   });
 

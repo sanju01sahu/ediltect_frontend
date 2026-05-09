@@ -172,3 +172,22 @@ export interface BonusSummaryItem {
   _sum: { amount: string | null };
   _count: { _all: number };
 }
+
+export interface BonusRunResponse {
+  message: string;
+  createdCount: number;
+  created: Commission[];
+  period: {
+    year: number;
+    month: number;
+  };
+  summary: {
+    installationContractsConsidered: number;
+    agentsEvaluated: number;
+    agentsQualified: number;
+    managersEvaluated: number;
+    managersQualified: number;
+    agentRule: string;
+    managerRule: string;
+  };
+}

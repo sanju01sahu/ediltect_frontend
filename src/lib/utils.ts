@@ -39,7 +39,8 @@ export function formatDateTime(value: string | number | Date) {
 
 export function getErrorMessage(error: unknown, fallback = "Something went wrong.") {
   if (error && typeof error === "object" && "data" in error) {
-    const payload = error.data as { message?: string };
+    const payload = error.data as { message?: string } | string | undefined;
+    if (typeof payload === "string") return payload;
     return payload?.message ?? fallback;
   }
   return fallback;

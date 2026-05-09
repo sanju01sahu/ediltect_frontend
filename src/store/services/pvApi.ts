@@ -12,6 +12,7 @@ import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from 
 import { getSessionFromAccessToken } from "@/lib/jwt";
 import {
   AuditLog,
+  BonusRunResponse,
   BonusSummaryItem,
   Commission,
   Contract,
@@ -362,7 +363,7 @@ export const pvApi = createApi({
       query: ({ userId, ...params }) => `/commissions/${userId}${buildListQueryString(params)}`,
       providesTags: ["Commissions"],
     }),
-    runMonthlyBonus: builder.mutation<{ createdCount: number; created: Commission[] }, MonthlyQuery>({
+    runMonthlyBonus: builder.mutation<BonusRunResponse, MonthlyQuery>({
       query: (body) => ({
         url: "/bonuses/run-monthly",
         method: "POST",

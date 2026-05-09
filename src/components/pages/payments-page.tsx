@@ -19,6 +19,7 @@ import { Modal } from "@/components/ui/modal";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { showToast } from "@/lib/toast";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { formatCompactId, formatCurrency, formatDate, getErrorMessage } from "@/lib/utils";
 import {
@@ -100,19 +101,23 @@ export default function PaymentsPage() {
   const onCreatePayment = paymentForm.handleSubmit(async (values) => {
     setBanner(null);
     try {
-      await createPayment(values).unwrap();
-      setBanner({ type: "success", text: "Payment created successfully." });
+      const response = await createPayment(values).unwrap();
+      const message = (response as { message?: string }).message ?? "Payment created successfully.";
+      setBanner({ type: "success", text: message });
+      showToast({ type: "success", title: "Payment created", description: message });
       setOpenPaymentModal(false);
       paymentForm.reset({ status: "PENDING" });
     } catch (error) {
-      setBanner({ type: "error", text: getErrorMessage(error, "Failed to create payment.") });
+      const message = getErrorMessage(error, "Failed to create payment.");
+      setBanner({ type: "error", text: message });
+      showToast({ type: "error", title: "Create payment failed", description: message });
     }
   });
 
   const onAddTransaction = txForm.handleSubmit(async (values) => {
     setBanner(null);
     try {
-      await addTransaction({
+      const response = await addTransaction({
         id: values.paymentId,
         amount: values.amount,
         method: values.method,
@@ -120,11 +125,15 @@ export default function PaymentsPage() {
         proofUrl: values.proofUrl || undefined,
         adminNote: values.adminNote || undefined,
       }).unwrap();
-      setBanner({ type: "success", text: "Transaction added successfully." });
+      const message = (response as { message?: string }).message ?? "Transaction added successfully.";
+      setBanner({ type: "success", text: message });
+      showToast({ type: "success", title: "Transaction added", description: message });
       setOpenTxModal(false);
       txForm.reset({ method: "UPI" });
     } catch (error) {
-      setBanner({ type: "error", text: getErrorMessage(error, "Failed to add transaction.") });
+      const message = getErrorMessage(error, "Failed to add transaction.");
+      setBanner({ type: "error", text: message });
+      showToast({ type: "error", title: "Add transaction failed", description: message });
     }
   });
 

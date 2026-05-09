@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { navItems } from "@/lib/navigation";
+import { showToast } from "@/lib/toast";
+import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useGetUsersQuery, useLogoutMutation } from "@/store/services/pvApi";
 import { AuthSession } from "@/types/api";
@@ -44,8 +46,21 @@ export function AppShell({
   }, [session.role]);
 
   const handleLogout = async () => {
-    await logout().unwrap().catch(() => null);
-    router.replace("/login");
+    try {
+      await logout().unwrap();
+      showToast({
+        type: "success",
+        title: "Signed out",
+        description: "You have been signed out successfully.",
+      });
+      router.replace("/login");
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Sign out failed",
+        description: getErrorMessage(error, "Unable to sign out right now. Please try again."),
+      });
+    }
   };
 
   return (

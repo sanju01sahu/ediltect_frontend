@@ -14,9 +14,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { showToast } from "@/lib/toast";
 import { formatCompactId, formatCurrency, getErrorMessage } from "@/lib/utils";
 import { useGetSessionQuery, useGetUsersQuery, useRunMonthlyBonusMutation } from "@/store/services/pvApi";
-import { Commission } from "@/types/api";
+import { BonusRunResponse, Commission } from "@/types/api";
 
 const schema = z.object({
   year: z.number().int().min(2000),
@@ -32,6 +33,7 @@ export default function BonusesPage() {
   const users = usersResponse?.items ?? [];
   const [runBonus, runState] = useRunMonthlyBonusMutation();
   const [results, setResults] = useState<Commission[]>([]);
+  const [summary, setSummary] = useState<BonusRunResponse["summary"] | null>(null);
   const [banner, setBanner] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const userLookup = new Map(users.map((user) => [user.id, user]));
 
@@ -49,12 +51,24 @@ export default function BonusesPage() {
     try {
       const response = await runBonus(values).unwrap();
       setResults(response.created);
+      setSummary(response.summary);
       setBanner({
         type: "success",
-        text: `Bonus run completed. Created ${response.createdCount} commission entries.`,
+        text: response.message,
+      });
+      showToast({
+        type: response.createdCount > 0 ? "success" : "info",
+        title: "Monthly bonus run completed",
+        description: response.message,
       });
     } catch (error) {
-      setBanner({ type: "error", text: getErrorMessage(error, "Failed to run monthly bonus.") });
+      const message = getErrorMessage(error, "Failed to run monthly bonus.");
+      setBanner({ type: "error", text: message });
+      showToast({
+        type: "error",
+        title: "Monthly bonus run failed",
+        description: message,
+      });
     }
   });
 
@@ -111,8 +125,24 @@ export default function BonusesPage() {
 
       <Card>
         <CardHeader title="Generated Bonus Rows" description="Freshly generated commission rows from the latest run." />
+        {summary ? (
+          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
+              Contracts considered: <strong>{summary.installationContractsConsidered}</strong>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
+              Agents qualified: <strong>{summary.agentsQualified}</strong> / {summary.agentsEvaluated}
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
+              Managers qualified: <strong>{summary.managersQualified}</strong> / {summary.managersEvaluated}
+            </div>
+          </div>
+        ) : null}
         {results.length === 0 ? (
-          <EmptyState title="No run results yet" description="Execute monthly bonus to inspect created rows." />
+          <EmptyState
+            title="No bonus rows created in last run"
+            description="This usually means installation thresholds were not met for the selected month."
+          />
         ) : (
           <DataTable columns={["User", "Type", "Amount", "Contract"]}>
             {results.map((item) => (

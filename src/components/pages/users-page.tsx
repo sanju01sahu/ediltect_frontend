@@ -19,6 +19,7 @@ import { Modal } from "@/components/ui/modal";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { showToast } from "@/lib/toast";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { getErrorMessage } from "@/lib/utils";
 import {
@@ -103,22 +104,26 @@ export default function UsersPage() {
   const onCreate = createForm.handleSubmit(async (values) => {
     setBanner(null);
     try {
-      await createUser({
+      const response = await createUser({
         ...values,
         managerId: values.role === "AGENT" ? values.managerId || undefined : undefined,
       }).unwrap();
-      setBanner({ type: "success", text: "User created successfully." });
+      const message = (response as { message?: string }).message ?? "User created successfully.";
+      setBanner({ type: "success", text: message });
+      showToast({ type: "success", title: "User created", description: message });
       setOpenCreate(false);
       createForm.reset({ role: "AGENT" });
     } catch (error) {
-      setBanner({ type: "error", text: getErrorMessage(error, "Failed to create user.") });
+      const message = getErrorMessage(error, "Failed to create user.");
+      setBanner({ type: "error", text: message });
+      showToast({ type: "error", title: "Create user failed", description: message });
     }
   });
 
   const onUpdate = updateForm.handleSubmit(async (values) => {
     setBanner(null);
     try {
-      await updateUser({
+      const response = await updateUser({
         id: values.id,
         name: values.name || undefined,
         managerId:
@@ -128,11 +133,15 @@ export default function UsersPage() {
               ? null
               : values.managerId,
       }).unwrap();
-      setBanner({ type: "success", text: "User updated successfully." });
+      const message = (response as { message?: string }).message ?? "User updated successfully.";
+      setBanner({ type: "success", text: message });
+      showToast({ type: "success", title: "User updated", description: message });
       setOpenUpdate(false);
       updateForm.reset();
     } catch (error) {
-      setBanner({ type: "error", text: getErrorMessage(error, "Failed to update user.") });
+      const message = getErrorMessage(error, "Failed to update user.");
+      setBanner({ type: "error", text: message });
+      showToast({ type: "error", title: "Update user failed", description: message });
     }
   });
 

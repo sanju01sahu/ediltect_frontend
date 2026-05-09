@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { showToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/utils";
 import { useGetSessionQuery, useLoginMutation } from "@/store/services/pvApi";
 import { ThemeToggle } from "./theme-toggle";
@@ -45,9 +45,12 @@ export default function LoginForm() {
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       await login(values).unwrap();
+      showToast({ type: "success", title: "Signed in", description: "Welcome back." });
       router.replace("/");
     } catch (error) {
-      form.setError("root", { message: getErrorMessage(error, "Unable to sign in.") });
+      const message = getErrorMessage(error, "Unable to sign in.");
+      form.setError("root", { message });
+      showToast({ type: "error", title: "Sign in failed", description: message });
     }
   });
 
@@ -78,62 +81,52 @@ export default function LoginForm() {
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Sign in to your workspace</h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Use your backend credentials to continue.</p>
 
-          {sessionLoading ? (
-            <div className="mt-6 space-y-3">
-              <Skeleton className="h-5 w-24" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-5 w-24" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+          <form className="mt-6 space-y-4" onSubmit={onSubmit}>
+            <div className="space-y-1">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" {...form.register("email")} />
             </div>
-          ) : (
-            <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-              <div className="space-y-1">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" {...form.register("email")} />
+            <div className="space-y-1">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  className="pr-24"
+                  {...form.register("password")}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 h-8 -translate-y-1/2 px-2"
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? "Hide" : "Show"}
+                </Button>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    className="pr-24"
-                    {...form.register("password")}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1/2 h-8 -translate-y-1/2 px-2"
-                    onClick={() => setShowPassword((value) => !value)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    {showPassword ? "Hide" : "Show"}
-                  </Button>
-                </div>
-              </div>
+            </div>
 
-              {form.formState.errors.root?.message ? (
-                <Alert type="error">{form.formState.errors.root.message}</Alert>
-              ) : null}
+            {form.formState.errors.root?.message ? (
+              <Alert type="error">{form.formState.errors.root.message}</Alert>
+            ) : null}
 
-              <Button className="w-full" type="submit" disabled={loginState.isLoading}>
-                {loginState.isLoading ? (
-                  <>
-                    <Spinner />
-                    Signing in...
-                  </>
-                ) : (
-                  <>
-                    Continue
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </form>
-          )}
+            <Button className="w-full" type="submit" disabled={loginState.isLoading}>
+              {loginState.isLoading ? (
+                <>
+                  <Spinner />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  Continue
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </form>
         </Card>
       </div>
     </main>
