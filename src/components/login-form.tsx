@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -68,7 +69,10 @@ export default function LoginForm() {
         <Card className="relative overflow-hidden border-0 bg-slate-900 p-8 text-white shadow-2xl dark:bg-slate-950">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(56,189,248,.35),transparent_30%),radial-gradient(circle_at_15%_80%,rgba(245,158,11,.22),transparent_35%)]" />
           <div className="relative">
-            <p className="text-xs uppercase tracking-[0.22em] text-sky-300">Photovoltaic Sales Network Management Platform</p>
+            <div className="flex items-center gap-2">
+              <Image src="/solar.png" alt="Photovoltaic logo" width={24} height={24} className="rounded-md" />
+              <p className="text-xs uppercase tracking-[0.22em] text-sky-300">Photovoltaic Sales Network Management Platform</p>
+            </div>
             <h1 className="mt-4 text-4xl font-semibold tracking-tight">Commercial-grade control for solar sales teams</h1>
             <p className="mt-4 max-w-lg text-slate-300">
               Manage users, solutions, contracts, commissions, bonuses, payments, and reports in one premium workspace.

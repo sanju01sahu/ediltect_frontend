@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut, Menu, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -65,8 +66,11 @@ export function AppShell({
           )}
         >
           <div className="mb-6 flex items-center justify-between lg:justify-start">
-            <Link href="/" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-              Photovoltaic Sales Network Management Platform
+            <Link href="/" className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <Image src="/solar.png" alt="Photovoltaic logo" width={28} height={28} className="rounded-md" />
+              <span className="text-sm font-semibold leading-tight tracking-tight">
+                Photovoltaic Sales Network Management Platform
+              </span>
             </Link>
             <Button className="lg:hidden" variant="ghost" size="sm" onClick={() => setMobileOpen(false)}>
               <X className="h-4 w-4" />

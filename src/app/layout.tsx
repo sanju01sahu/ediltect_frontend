@@ -17,6 +17,11 @@ const sourceCodePro = Source_Code_Pro({
 export const metadata: Metadata = {
   title: "Photovoltaic Sales Network Management Platform",
   description: "Enterprise-grade photovoltaic sales network management platform",
+  icons: {
+    icon: "/solar.png",
+    shortcut: "/solar.png",
+    apple: "/solar.png"
+  }
 };
 
 export default function RootLayout({
