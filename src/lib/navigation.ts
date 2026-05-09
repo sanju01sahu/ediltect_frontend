@@ -9,6 +9,7 @@ import {
   SunMedium,
   Users,
 } from "lucide-react";
+import { Role } from "@/types/api";
 
 export const navItems = [
   { href: "/", label: "Overview", icon: Home },
@@ -22,3 +23,18 @@ export const navItems = [
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 
+const hiddenByRole: Record<Role, string[]> = {
+  ADMIN: [],
+  AREA_MANAGER: ["/audit-logs"],
+  AGENT: ["/users", "/payments", "/audit-logs", "/reports"]
+};
+
+export function getAllowedNavItems(role: Role) {
+  const blocked = new Set(hiddenByRole[role]);
+  return navItems.filter((item) => !blocked.has(item.href));
+}
+
+export function canAccessRoute(role: Role, pathname: string) {
+  const allowedHrefs = new Set(getAllowedNavItems(role).map((item) => item.href));
+  return allowedHrefs.has(pathname);
+}

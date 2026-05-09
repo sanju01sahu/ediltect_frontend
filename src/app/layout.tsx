@@ -15,8 +15,8 @@ const sourceCodePro = Source_Code_Pro({
 });
 
 export const metadata: Metadata = {
-  title: "PV Frontoffice",
-  description: "Enterprise PV operations console",
+  title: "Photovoltaic Sales Network Management Platform",
+  description: "Enterprise-grade photovoltaic sales network management platform",
 };
 
 export default function RootLayout({

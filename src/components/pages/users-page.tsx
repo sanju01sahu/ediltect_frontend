@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
@@ -31,17 +32,34 @@ import {
 import { Role } from "@/types/api";
 
 const createUserSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
+  name: z.string().trim().min(2, "Name must be at least 2 characters."),
+  email: z.string().trim().min(1, "Email is required.").email("Enter a valid email address."),
   password: z
     .string()
-    .min(12)
-    .regex(/[A-Z]/)
-    .regex(/[a-z]/)
-    .regex(/[0-9]/)
-    .regex(/[^A-Za-z0-9]/),
+    .min(12, "Password must be at least 12 characters.")
+    .regex(/[A-Z]/, "Password must include an uppercase letter.")
+    .regex(/[a-z]/, "Password must include a lowercase letter.")
+    .regex(/[0-9]/, "Password must include a number.")
+    .regex(/[^A-Za-z0-9]/, "Password must include a special character."),
   role: z.enum(["ADMIN", "AREA_MANAGER", "AGENT"] as const),
   managerId: z.string().optional(),
+}).superRefine((value, ctx) => {
+  if (value.role === "AGENT" && !value.managerId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["managerId"],
+      message: "Please select a reporting manager for this agent."
+    });
+  }
+});
+
+const updateUserSchema = z.object({
+  id: z.string().trim().min(1, "Please select a user to update."),
+  name: z
+    .string()
+    .optional()
+    .refine((value) => !value || value.trim().length >= 2, "Name must be at least 2 characters."),
+  managerId: z.string().optional()
 });
 
 type CreateUserForm = z.infer<typeof createUserSchema>;
@@ -96,7 +114,9 @@ export default function UsersPage() {
     resolver: zodResolver(createUserSchema),
     defaultValues: { role: "AGENT" },
   });
-  const updateForm = useForm<UpdateUserForm>({});
+  const updateForm = useForm<UpdateUserForm>({
+    resolver: zodResolver(updateUserSchema),
+  });
 
   const selectedCreateRole = createForm.watch("role");
   const selectedUpdateId = updateForm.watch("id");
@@ -260,14 +280,17 @@ export default function UsersPage() {
           <div className="space-y-1">
             <Label htmlFor="name">Name</Label>
             <Input id="name" {...createForm.register("name")} />
+            <FieldError message={createForm.formState.errors.name?.message} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" {...createForm.register("email")} />
+            <FieldError message={createForm.formState.errors.email?.message} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" {...createForm.register("password")} />
+            <FieldError message={createForm.formState.errors.password?.message} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="role">Role</Label>
@@ -288,6 +311,7 @@ export default function UsersPage() {
                   </option>
                 ))}
               </Select>
+              <FieldError message={createForm.formState.errors.managerId?.message} />
             </div>
           ) : null}
           <Button type="submit" className="w-full" disabled={createState.isLoading}>
@@ -324,10 +348,12 @@ export default function UsersPage() {
                 </option>
               ))}
             </Select>
+            <FieldError message={updateForm.formState.errors.id?.message} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="updateName">Name</Label>
             <Input id="updateName" {...updateForm.register("name")} />
+            <FieldError message={updateForm.formState.errors.name?.message} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="updateManager">Manager</Label>

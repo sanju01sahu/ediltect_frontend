@@ -3,8 +3,8 @@
 import { LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { navItems } from "@/lib/navigation";
+import { useState } from "react";
+import { getAllowedNavItems } from "@/lib/navigation";
 import { showToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -35,15 +35,7 @@ export function AppShell({
   const users = usersResponse?.items ?? [];
   const currentUser = users.find((user) => user.id === session.userId);
 
-  const scopedNav = useMemo(() => {
-    if (session.role === "ADMIN") return navItems;
-    if (session.role === "AREA_MANAGER") {
-      return navItems.filter((item) => item.href !== "/audit-logs");
-    }
-    return navItems.filter(
-      (item) => !["/users", "/payments", "/audit-logs", "/reports"].includes(item.href),
-    );
-  }, [session.role]);
+  const scopedNav = getAllowedNavItems(session.role);
 
   const handleLogout = async () => {
     try {
@@ -74,7 +66,7 @@ export function AppShell({
         >
           <div className="mb-6 flex items-center justify-between lg:justify-start">
             <Link href="/" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-              PV Frontoffice
+              Photovoltaic Sales Network Management Platform
             </Link>
             <Button className="lg:hidden" variant="ghost" size="sm" onClick={() => setMobileOpen(false)}>
               <X className="h-4 w-4" />

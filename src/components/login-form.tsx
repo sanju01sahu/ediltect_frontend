@@ -9,6 +9,7 @@ import { z } from "zod";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
@@ -18,8 +19,12 @@ import { useGetSessionQuery, useLoginMutation } from "@/store/services/pvApi";
 import { ThemeToggle } from "./theme-toggle";
 
 const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required.")
+    .email("Enter a valid email address."),
+  password: z.string().min(1, "Password is required."),
 });
 
 type LoginValues = z.infer<typeof schema>;
@@ -27,7 +32,7 @@ type LoginValues = z.infer<typeof schema>;
 export default function LoginForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const { data: session, isLoading: sessionLoading } = useGetSessionQuery();
+  const { data: session } = useGetSessionQuery();
   const [login, loginState] = useLoginMutation();
 
   const form = useForm<LoginValues>({
@@ -63,7 +68,7 @@ export default function LoginForm() {
         <Card className="relative overflow-hidden border-0 bg-slate-900 p-8 text-white shadow-2xl dark:bg-slate-950">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(56,189,248,.35),transparent_30%),radial-gradient(circle_at_15%_80%,rgba(245,158,11,.22),transparent_35%)]" />
           <div className="relative">
-            <p className="text-xs uppercase tracking-[0.22em] text-sky-300">PV Operations Suite</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-sky-300">Photovoltaic Sales Network Management Platform</p>
             <h1 className="mt-4 text-4xl font-semibold tracking-tight">Commercial-grade control for solar sales teams</h1>
             <p className="mt-4 max-w-lg text-slate-300">
               Manage users, solutions, contracts, commissions, bonuses, payments, and reports in one premium workspace.
@@ -85,6 +90,7 @@ export default function LoginForm() {
             <div className="space-y-1">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" {...form.register("email")} />
+              <FieldError message={form.formState.errors.email?.message} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="password">Password</Label>
@@ -107,6 +113,7 @@ export default function LoginForm() {
                   {showPassword ? "Hide" : "Show"}
                 </Button>
               </div>
+              <FieldError message={form.formState.errors.password?.message} />
             </div>
 
             {form.formState.errors.root?.message ? (

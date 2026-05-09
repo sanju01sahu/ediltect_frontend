@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
@@ -31,17 +32,24 @@ import {
 } from "@/store/services/pvApi";
 
 const solutionSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().trim().min(1, "Solution name is required."),
 });
 
-const versionSchema = z.object({
-  solutionId: z.string().min(1),
-  price: z.number().positive(),
-  baseCommission: z.number().nonnegative(),
-  validFrom: z.string().min(1),
-  validTo: z.string().optional(),
-  retroactive: z.boolean(),
-});
+const versionSchema = z
+  .object({
+    solutionId: z.string().min(1, "Please select a solution."),
+    price: z.number({ error: "Price is required." }).positive("Price must be greater than zero."),
+    baseCommission: z
+      .number({ error: "Base commission is required." })
+      .nonnegative("Base commission cannot be negative."),
+    validFrom: z.string().min(1, "Valid from date is required."),
+    validTo: z.string().optional(),
+    retroactive: z.boolean(),
+  })
+  .refine(
+    (value) => !value.validTo || value.validTo >= value.validFrom,
+    { path: ["validTo"], message: "Valid to date cannot be before valid from date." }
+  );
 
 type SolutionForm = z.infer<typeof solutionSchema>;
 type VersionForm = z.infer<typeof versionSchema>;
@@ -326,6 +334,7 @@ export default function SolutionsPage() {
           <div className="space-y-1">
             <Label htmlFor="solutionName">Name</Label>
             <Input id="solutionName" {...solutionForm.register("name")} />
+            <FieldError message={solutionForm.formState.errors.name?.message} />
           </div>
           <Button className="w-full" type="submit" disabled={solutionState.isLoading}>
             {solutionState.isLoading ? (
@@ -364,6 +373,7 @@ export default function SolutionsPage() {
                 />
               )}
             />
+            <FieldError message={versionForm.formState.errors.solutionId?.message} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -374,6 +384,7 @@ export default function SolutionsPage() {
                 step="0.01"
                 {...versionForm.register("price", { valueAsNumber: true })}
               />
+              <FieldError message={versionForm.formState.errors.price?.message} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="baseCommission">Base Commission</Label>
@@ -383,16 +394,19 @@ export default function SolutionsPage() {
                 step="0.01"
                 {...versionForm.register("baseCommission", { valueAsNumber: true })}
               />
+              <FieldError message={versionForm.formState.errors.baseCommission?.message} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label htmlFor="validFrom">Valid From</Label>
               <Input id="validFrom" type="date" {...versionForm.register("validFrom")} />
+              <FieldError message={versionForm.formState.errors.validFrom?.message} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="validTo">Valid To</Label>
               <Input id="validTo" type="date" {...versionForm.register("validTo")} />
+              <FieldError message={versionForm.formState.errors.validTo?.message} />
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">

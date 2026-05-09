@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
+import { canAccessRoute } from "@/lib/navigation";
 import { Spinner } from "@/components/ui/spinner";
 import { useGetSessionQuery } from "@/store/services/pvApi";
 
@@ -12,13 +13,19 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { data: session, isLoading } = useGetSessionQuery();
 
   useEffect(() => {
     if (!isLoading && !session?.user) {
       router.replace("/login");
+      return;
     }
-  }, [isLoading, router, session]);
+
+    if (!isLoading && session?.user && !canAccessRoute(session.user.role, pathname)) {
+      router.replace("/");
+    }
+  }, [isLoading, pathname, router, session]);
 
   if (isLoading || !session?.user) {
     return (

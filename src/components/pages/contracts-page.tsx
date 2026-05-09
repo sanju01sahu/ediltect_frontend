@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
@@ -32,11 +33,11 @@ import {
 } from "@/store/services/pvApi";
 
 const schema = z.object({
-  solutionId: z.string().min(1),
-  installationDate: z.string().min(1),
+  solutionId: z.string().min(1, "Please select a solution."),
+  installationDate: z.string().min(1, "Please select an installation date."),
   status: z.enum(["DRAFT", "ACTIVE", "COMPLETED", "CANCELLED"] as const),
   agentId: z.string().optional(),
-  customerDetails: z.string().min(2),
+  customerDetails: z.string().trim().min(2, "Customer details are required."),
 });
 
 type ContractForm = z.infer<typeof schema>;
@@ -81,11 +82,21 @@ export default function ContractsPage() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     setBanner(null);
+    form.clearErrors();
+
+    if (needsAgent && !values.agentId) {
+      const message = "Please select an assigned agent.";
+      form.setError("agentId", { type: "manual", message });
+      showToast({ type: "error", title: "Missing agent", description: message });
+      return;
+    }
+
     let customerDetails: unknown;
     try {
       customerDetails = JSON.parse(values.customerDetails);
     } catch {
       const message = "Customer details must be valid JSON.";
+      form.setError("customerDetails", { type: "manual", message });
       setBanner({ type: "error", text: message });
       showToast({ type: "error", title: "Invalid customer details", description: message });
       return;
@@ -208,13 +219,15 @@ export default function ContractsPage() {
                 <option key={solution.id} value={solution.id}>
                   {solution.name}
                 </option>
-              ))}
-            </Select>
+                ))}
+              </Select>
+            <FieldError message={form.formState.errors.solutionId?.message} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label htmlFor="installationDate">Installation Date</Label>
               <Input id="installationDate" type="date" {...form.register("installationDate")} />
+              <FieldError message={form.formState.errors.installationDate?.message} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="status">Status</Label>
@@ -237,11 +250,13 @@ export default function ContractsPage() {
                   </option>
                 ))}
               </Select>
+              <FieldError message={form.formState.errors.agentId?.message} />
             </div>
           ) : null}
           <div className="space-y-1">
             <Label htmlFor="customerDetails">Customer Details (JSON)</Label>
             <Textarea id="customerDetails" className="font-mono" {...form.register("customerDetails")} />
+            <FieldError message={form.formState.errors.customerDetails?.message} />
           </div>
           <Button type="submit" className="w-full" disabled={createState.isLoading}>
             {createState.isLoading ? (

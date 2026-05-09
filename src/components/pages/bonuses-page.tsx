@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
@@ -20,8 +21,8 @@ import { useGetSessionQuery, useGetUsersQuery, useRunMonthlyBonusMutation } from
 import { BonusRunResponse, Commission } from "@/types/api";
 
 const schema = z.object({
-  year: z.number().int().min(2000),
-  month: z.number().int().min(1).max(12),
+  year: z.number({ error: "Year is required." }).int("Year must be a whole number.").min(2000, "Year must be 2000 or later."),
+  month: z.number({ error: "Month is required." }).int("Month must be a whole number.").min(1, "Month must be between 1 and 12.").max(12, "Month must be between 1 and 12."),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -96,6 +97,7 @@ export default function BonusesPage() {
           <div className="space-y-1">
             <Label htmlFor="year">Year</Label>
             <Input id="year" type="number" {...form.register("year", { valueAsNumber: true })} />
+            <FieldError message={form.formState.errors.year?.message} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="month">Month</Label>
@@ -106,6 +108,7 @@ export default function BonusesPage() {
               max={12}
               {...form.register("month", { valueAsNumber: true })}
             />
+            <FieldError message={form.formState.errors.month?.message} />
           </div>
           <div className="flex items-end">
             <Button type="submit" className="w-full" disabled={runState.isLoading}>

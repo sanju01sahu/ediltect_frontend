@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
@@ -31,17 +32,17 @@ import {
 } from "@/store/services/pvApi";
 
 const createPaymentSchema = z.object({
-  userId: z.string().min(1),
-  totalAmount: z.number().positive(),
+  userId: z.string().min(1, "Please select a user."),
+  totalAmount: z.number({ error: "Total amount is required." }).positive("Total amount must be greater than zero."),
   status: z.enum(["PENDING", "DISPUTED", "CANCELLED"] as const).optional(),
 });
 
 const createTransactionSchema = z.object({
-  paymentId: z.string().min(1),
-  amount: z.number().positive(),
+  paymentId: z.string().min(1, "Please select a payment."),
+  amount: z.number({ error: "Amount is required." }).positive("Amount must be greater than zero."),
   method: z.enum(["BANK_TRANSFER", "UPI", "CASH", "CARD", "OTHER"] as const),
   referenceNumber: z.string().optional(),
-  proofUrl: z.string().url().optional().or(z.literal("")),
+  proofUrl: z.string().url("Proof URL must be a valid URL.").optional().or(z.literal("")),
   adminNote: z.string().optional(),
 });
 
@@ -234,8 +235,9 @@ export default function PaymentsPage() {
                 <option key={user.id} value={user.id}>
                   {user.name} - {user.email}
                 </option>
-              ))}
-            </Select>
+                ))}
+              </Select>
+            <FieldError message={paymentForm.formState.errors.userId?.message} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="totalAmount">Total Amount</Label>
@@ -243,8 +245,9 @@ export default function PaymentsPage() {
               id="totalAmount"
               type="number"
               step="0.01"
-              {...paymentForm.register("totalAmount", { valueAsNumber: true })}
-            />
+                {...paymentForm.register("totalAmount", { valueAsNumber: true })}
+              />
+            <FieldError message={paymentForm.formState.errors.totalAmount?.message} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="status">Forced Status</Label>
@@ -287,6 +290,7 @@ export default function PaymentsPage() {
                 );
               })}
             </Select>
+            <FieldError message={txForm.formState.errors.paymentId?.message} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -297,6 +301,7 @@ export default function PaymentsPage() {
                 step="0.01"
                 {...txForm.register("amount", { valueAsNumber: true })}
               />
+              <FieldError message={txForm.formState.errors.amount?.message} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="method">Method</Label>
@@ -316,6 +321,7 @@ export default function PaymentsPage() {
           <div className="space-y-1">
             <Label htmlFor="proofUrl">Proof URL</Label>
             <Input id="proofUrl" {...txForm.register("proofUrl")} />
+            <FieldError message={txForm.formState.errors.proofUrl?.message} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="adminNote">Admin Note</Label>
