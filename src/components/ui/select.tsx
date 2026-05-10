@@ -70,7 +70,13 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     const [internalValue, setInternalValue] = React.useState(initialValue);
     const [open, setOpen] = React.useState(false);
     const [query, setQuery] = React.useState("");
-    const [menuStyle, setMenuStyle] = React.useState<{ top: number; left: number; width: number } | null>(null);
+    const [menuStyle, setMenuStyle] = React.useState<{
+      top: number;
+      left: number;
+      width: number;
+      listMaxHeight: number;
+      panelMaxHeight: number;
+    } | null>(null);
     const resolvedQuery = searchValue ?? query;
 
     const selectedValue = isControlled ? String(value ?? "") : internalValue;
@@ -131,10 +137,27 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       const updatePosition = () => {
         if (!triggerRef.current) return;
         const rect = triggerRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const gutter = 12;
+        const gap = 8;
+        const spaceBelow = viewportHeight - rect.bottom - gutter;
+        const spaceAbove = rect.top - gutter;
+        const prefersAbove = spaceBelow < 220 && spaceAbove > spaceBelow;
+        const panelTarget = Math.max(160, Math.min(360, prefersAbove ? spaceAbove : spaceBelow));
+        const searchSectionHeight = searchable ? 56 : 0;
+        const chromeHeight = 16;
+        const listMaxHeight = Math.max(96, panelTarget - searchSectionHeight - chromeHeight);
+        const panelMaxHeight = listMaxHeight + searchSectionHeight + chromeHeight;
+        const top = prefersAbove
+          ? Math.max(gutter, rect.top - gap - panelMaxHeight)
+          : Math.max(gutter, rect.bottom + gap);
+
         setMenuStyle({
-          top: rect.bottom + 8,
+          top,
           left: rect.left,
           width: rect.width,
+          listMaxHeight,
+          panelMaxHeight,
         });
       };
 
@@ -145,7 +168,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         window.removeEventListener("resize", updatePosition);
         window.removeEventListener("scroll", updatePosition, true);
       };
-    }, [open]);
+    }, [open, searchable]);
 
     React.useEffect(() => {
       function onPointerDown(event: MouseEvent) {
@@ -228,6 +251,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               closeDropdown();
               return;
             }
+            if (triggerRef.current) {
+              const rect = triggerRef.current.getBoundingClientRect();
+              if (rect.bottom > window.innerHeight - 220) {
+                triggerRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
+              }
+            }
             setOpen(true);
           }}
         >
@@ -247,7 +276,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               <div
                 ref={menuRef}
                 className="fixed z-[1200] rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900"
-                style={{ top: menuStyle.top, left: menuStyle.left, width: menuStyle.width }}
+                style={{
+                  top: menuStyle.top,
+                  left: menuStyle.left,
+                  width: menuStyle.width,
+                  maxHeight: menuStyle.panelMaxHeight,
+                }}
               >
                 {searchable ? (
                   <div className="relative mb-2">
@@ -266,7 +300,10 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                     />
                   </div>
                 ) : null}
-                <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-100 dark:border-slate-800">
+                <div
+                  className="overflow-y-auto rounded-lg border border-slate-100 dark:border-slate-800"
+                  style={{ maxHeight: menuStyle.listMaxHeight }}
+                >
                   {filteredOptions.length === 0 ? (
                     <p className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">{emptyMessage}</p>
                   ) : (

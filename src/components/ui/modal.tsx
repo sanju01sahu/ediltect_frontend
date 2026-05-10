@@ -32,6 +32,7 @@ export function Modal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.98 }}
             transition={{ duration: 0.2 }}
+            data-modal-scroll
             className="my-4 max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-900 sm:my-6 sm:max-h-[calc(100vh-3rem)] sm:p-5"
             onClick={(event) => event.stopPropagation()}
             role="dialog"

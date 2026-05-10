@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, Search } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Input } from "./input";
@@ -38,8 +39,17 @@ export function SearchableSelect({
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [menuStyle, setMenuStyle] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    listMaxHeight: number;
+    panelMaxHeight: number;
+  } | null>(null);
   const resolvedQuery = searchValue ?? query;
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find((option) => option.value === value) ?? null;
   const closeDropdown = useCallback(() => {
     setOpen(false);
@@ -58,13 +68,54 @@ export function SearchableSelect({
   }, [options, resolvedQuery]);
 
   useEffect(() => {
+    if (!open) return;
+
+    const updatePosition = () => {
+      if (!triggerRef.current) return;
+      const rect = triggerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const gutter = 12;
+      const gap = 8;
+      const spaceBelow = viewportHeight - rect.bottom - gutter;
+      const spaceAbove = rect.top - gutter;
+      const prefersAbove = spaceBelow < 220 && spaceAbove > spaceBelow;
+      const panelTarget = Math.max(160, Math.min(360, prefersAbove ? spaceAbove : spaceBelow));
+      const searchSectionHeight = 56;
+      const chromeHeight = 16;
+      const listMaxHeight = Math.max(96, panelTarget - searchSectionHeight - chromeHeight);
+      const panelMaxHeight = listMaxHeight + searchSectionHeight + chromeHeight;
+      const top = prefersAbove
+        ? Math.max(gutter, rect.top - gap - panelMaxHeight)
+        : Math.max(gutter, rect.bottom + gap);
+
+      setMenuStyle({
+        top,
+        left: rect.left,
+        width: rect.width,
+        listMaxHeight,
+        panelMaxHeight,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
     function onPointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        closeDropdown();
-      }
+      if (!open) return;
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      closeDropdown();
     }
 
     function onEscape(event: KeyboardEvent) {
+      if (!open) return;
       if (event.key === "Escape") {
         closeDropdown();
       }
@@ -76,11 +127,12 @@ export function SearchableSelect({
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onEscape);
     };
-  }, [closeDropdown]);
+  }, [closeDropdown, open]);
 
   return (
     <div ref={rootRef} className="relative">
       <button
+        ref={triggerRef}
         id={id}
         type="button"
         disabled={disabled}
@@ -93,6 +145,12 @@ export function SearchableSelect({
           if (open) {
             closeDropdown();
           } else {
+            if (triggerRef.current) {
+              const rect = triggerRef.current.getBoundingClientRect();
+              if (rect.bottom > window.innerHeight - 220) {
+                triggerRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
+              }
+            }
             setOpen(true);
           }
         }}
@@ -108,48 +166,63 @@ export function SearchableSelect({
         />
       </button>
 
-      {open ? (
-        <div className="absolute z-50 mt-2 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
-          <div className="relative mb-2">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              autoFocus
-              value={resolvedQuery}
-              onChange={(event) => {
-                if (searchValue === undefined) {
-                  setQuery(event.target.value);
-                }
-                onSearchChange?.(event.target.value);
+      {open && menuStyle && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              ref={menuRef}
+              className="fixed z-[1200] rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+              style={{
+                top: menuStyle.top,
+                left: menuStyle.left,
+                width: menuStyle.width,
+                maxHeight: menuStyle.panelMaxHeight,
               }}
-              placeholder={searchPlaceholder}
-              className="pl-9"
-            />
-          </div>
-          <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-100 dark:border-slate-800">
-            {filteredOptions.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">{emptyMessage}</p>
-            ) : (
-              <ul role="listbox" className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredOptions.map((option) => (
-                  <li key={option.value}>
-                    <button
-                      type="button"
-                      className="flex min-h-11 w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 sm:min-h-0"
-                      onClick={() => {
-                        onChange(option.value);
-                        closeDropdown();
-                      }}
-                    >
-                      <span>{option.label}</span>
-                      {option.value === value ? <Check className="h-4 w-4 text-emerald-500" /> : null}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      ) : null}
+            >
+              <div className="relative mb-2">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  autoFocus
+                  value={resolvedQuery}
+                  onChange={(event) => {
+                    if (searchValue === undefined) {
+                      setQuery(event.target.value);
+                    }
+                    onSearchChange?.(event.target.value);
+                  }}
+                  placeholder={searchPlaceholder}
+                  className="pl-9"
+                />
+              </div>
+              <div
+                className="overflow-y-auto rounded-lg border border-slate-100 dark:border-slate-800"
+                style={{ maxHeight: menuStyle.listMaxHeight }}
+              >
+                {filteredOptions.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">{emptyMessage}</p>
+                ) : (
+                  <ul role="listbox" className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {filteredOptions.map((option) => (
+                      <li key={option.value}>
+                        <button
+                          type="button"
+                          className="flex min-h-11 w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 sm:min-h-0"
+                          onClick={() => {
+                            onChange(option.value);
+                            closeDropdown();
+                          }}
+                        >
+                          <span>{option.label}</span>
+                          {option.value === value ? <Check className="h-4 w-4 text-emerald-500" /> : null}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
