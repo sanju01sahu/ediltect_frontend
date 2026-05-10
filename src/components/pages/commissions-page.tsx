@@ -28,27 +28,62 @@ export default function CommissionsPage() {
   const role = session?.user?.role;
   const canSeeAll = role === "ADMIN" || role === "AREA_MANAGER";
 
-  const { data: usersResponse } = useGetUsersQuery({ page: 1, limit: 100 }, { skip: !role });
+  const [userFilterSearchTerm, setUserFilterSearchTerm] = useState("");
+  const debouncedUserFilterSearchTerm = useDebouncedValue(userFilterSearchTerm);
+  const { data: usersResponse } = useGetUsersQuery(
+    { search: debouncedUserFilterSearchTerm, page: 1, limit: 50 },
+    { skip: !role },
+  );
   const users = usersResponse?.items ?? [];
   const [userIdFilter, setUserIdFilter] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
   const allCommissions = useGetCommissionsQuery(
-    { search: debouncedSearchTerm, page, limit: pageSize },
+    {
+      search: debouncedSearchTerm,
+      sortBy,
+      sortOrder,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      page,
+      limit: pageSize,
+    },
     { skip: !canSeeAll }
   );
   const filteredCommissions = useGetCommissionsByUserQuery(
-    { userId: activeFilter ?? "", search: debouncedSearchTerm, page, limit: pageSize },
+    {
+      userId: activeFilter ?? "",
+      search: debouncedSearchTerm,
+      sortBy,
+      sortOrder,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      page,
+      limit: pageSize,
+    },
     {
       skip: !activeFilter,
     },
   );
   const ownCommissions = useGetCommissionsByUserQuery(
-    { userId: session?.user?.userId ?? "", search: debouncedSearchTerm, page, limit: pageSize },
+    {
+      userId: session?.user?.userId ?? "",
+      search: debouncedSearchTerm,
+      sortBy,
+      sortOrder,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      page,
+      limit: pageSize,
+    },
     {
       skip: !session?.user?.userId || canSeeAll,
     },
@@ -80,12 +115,19 @@ export default function CommissionsPage() {
       />
 
       {canSeeAll ? (
-        <Card className="mb-4">
+        <Card className="relative z-20 mb-4">
           <CardHeader title="User Filter" description="Inspect commissions by selecting a user from the directory." />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-1">
               <Label htmlFor="commissionUserFilter">User</Label>
-              <Select id="commissionUserFilter" value={userIdFilter} onChange={(event) => setUserIdFilter(event.target.value)}>
+              <Select
+                id="commissionUserFilter"
+                searchable
+                searchValue={userFilterSearchTerm}
+                onSearchChange={setUserFilterSearchTerm}
+                value={userIdFilter}
+                onChange={(event) => setUserIdFilter(event.target.value)}
+              >
                 <option value="">All users</option>
                 {users.map((user) => (
                   <option key={user.id} value={user.id}>
@@ -131,7 +173,7 @@ export default function CommissionsPage() {
         </Card>
       ) : null}
 
-      <Card>
+      <Card className="relative z-10">
         <CardHeader
           title={activeFilter ? "Filtered Commissions" : canSeeAll ? "All Commissions" : "My Commissions"}
           description="Immutable rows across base and bonus types."
@@ -146,6 +188,60 @@ export default function CommissionsPage() {
             }}
             placeholder="Search by type, user, customer, contract, or date"
           />
+        </div>
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1">
+            <Label htmlFor="commissionsSortBy">Sort By</Label>
+            <Select
+              id="commissionsSortBy"
+              value={sortBy}
+              onChange={(event) => {
+                setSortBy(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="createdAt">Created Date</option>
+              <option value="name">User Name</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="commissionsSortOrder">Sort Order</Label>
+            <Select
+              id="commissionsSortOrder"
+              value={sortOrder}
+              onChange={(event) => {
+                setSortOrder(event.target.value as "asc" | "desc");
+                setPage(1);
+              }}
+            >
+              <option value="desc">Newest first</option>
+              <option value="asc">Oldest first</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="commissionsStartDate">Start Date</Label>
+            <Input
+              id="commissionsStartDate"
+              type="date"
+              value={startDate}
+              onChange={(event) => {
+                setStartDate(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="commissionsEndDate">End Date</Label>
+            <Input
+              id="commissionsEndDate"
+              type="date"
+              value={endDate}
+              onChange={(event) => {
+                setEndDate(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
         </div>
         {loading ? (
           <TableSkeleton rows={8} />

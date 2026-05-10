@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { TableSkeleton } from "@/components/dashboard/table-skeleton";
@@ -64,17 +64,41 @@ export default function PaymentsPage() {
   const [openPaymentModal, setOpenPaymentModal] = useState(false);
   const [openTxModal, setOpenTxModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [paymentSearchTerm, setPaymentSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [banner, setBanner] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
+  const debouncedUserSearchTerm = useDebouncedValue(userSearchTerm);
+  const debouncedPaymentSearchTerm = useDebouncedValue(paymentSearchTerm);
 
   const { data: paymentsResponse, isLoading } = useGetPaymentsQuery(
-    { search: debouncedSearchTerm, page, limit: pageSize },
+    {
+      search: debouncedSearchTerm,
+      status: statusFilter || undefined,
+      sortBy,
+      sortOrder,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      page,
+      limit: pageSize,
+    },
     { skip: !canView },
   );
-  const { data: allPaymentsResponse } = useGetPaymentsQuery({ page: 1, limit: 100 }, { skip: !canView });
-  const { data: usersResponse } = useGetUsersQuery({ page: 1, limit: 100 }, { skip: !canView });
+  const { data: allPaymentsResponse } = useGetPaymentsQuery(
+    { search: debouncedPaymentSearchTerm, page: 1, limit: 50 },
+    { skip: !canView },
+  );
+  const { data: usersResponse } = useGetUsersQuery(
+    { search: debouncedUserSearchTerm, page: 1, limit: 50 },
+    { skip: !canView },
+  );
   const payments = paymentsResponse?.items ?? [];
   const paymentOptions = allPaymentsResponse?.items ?? payments;
   const users = usersResponse?.items ?? [];
@@ -107,6 +131,7 @@ export default function PaymentsPage() {
       setBanner({ type: "success", text: message });
       showToast({ type: "success", title: "Payment created", description: message });
       setOpenPaymentModal(false);
+      setUserSearchTerm("");
       paymentForm.reset({ status: "PENDING" });
     } catch (error) {
       const message = getErrorMessage(error, "Failed to create payment.");
@@ -130,6 +155,7 @@ export default function PaymentsPage() {
       setBanner({ type: "success", text: message });
       showToast({ type: "success", title: "Transaction added", description: message });
       setOpenTxModal(false);
+      setPaymentSearchTerm("");
       txForm.reset({ method: "UPI" });
     } catch (error) {
       const message = getErrorMessage(error, "Failed to add transaction.");
@@ -157,10 +183,25 @@ export default function PaymentsPage() {
         action={
           isAdmin ? (
             <div className="flex w-full flex-wrap gap-2 md:w-auto">
-              <Button className="w-full sm:w-auto" variant="secondary" onClick={() => setOpenTxModal(true)}>
+              <Button
+                className="w-full sm:w-auto"
+                variant="secondary"
+                onClick={() => {
+                  setPaymentSearchTerm("");
+                  setOpenTxModal(true);
+                }}
+              >
                 Add Transaction
               </Button>
-              <Button className="w-full sm:w-auto" onClick={() => setOpenPaymentModal(true)}>Create Payment</Button>
+              <Button
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  setUserSearchTerm("");
+                  setOpenPaymentModal(true);
+                }}
+              >
+                Create Payment
+              </Button>
             </div>
           ) : null
         }
@@ -180,6 +221,78 @@ export default function PaymentsPage() {
             }}
             placeholder="Search by payment id, user, amount, status, or date"
           />
+        </div>
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="space-y-1">
+            <Label htmlFor="paymentsStatusFilter">Status</Label>
+            <Select
+              id="paymentsStatusFilter"
+              value={statusFilter}
+              onChange={(event) => {
+                setStatusFilter(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All statuses</option>
+              <option value="PENDING">PENDING</option>
+              <option value="PARTIALLY_PAID">PARTIALLY_PAID</option>
+              <option value="FULLY_PAID">FULLY_PAID</option>
+              <option value="DISPUTED">DISPUTED</option>
+              <option value="CANCELLED">CANCELLED</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="paymentsSortBy">Sort By</Label>
+            <Select
+              id="paymentsSortBy"
+              value={sortBy}
+              onChange={(event) => {
+                setSortBy(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="createdAt">Created Date</option>
+              <option value="name">User Name</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="paymentsSortOrder">Sort Order</Label>
+            <Select
+              id="paymentsSortOrder"
+              value={sortOrder}
+              onChange={(event) => {
+                setSortOrder(event.target.value as "asc" | "desc");
+                setPage(1);
+              }}
+            >
+              <option value="desc">Newest first</option>
+              <option value="asc">Oldest first</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="paymentsStartDate">Start Date</Label>
+            <Input
+              id="paymentsStartDate"
+              type="date"
+              value={startDate}
+              onChange={(event) => {
+                setStartDate(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="paymentsEndDate">End Date</Label>
+            <Input
+              id="paymentsEndDate"
+              type="date"
+              value={endDate}
+              onChange={(event) => {
+                setEndDate(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
         </div>
         {isLoading ? (
           <TableSkeleton rows={8} />
@@ -229,14 +342,30 @@ export default function PaymentsPage() {
         <form className="space-y-3" onSubmit={onCreatePayment}>
           <div className="space-y-1">
             <Label htmlFor="userId">User</Label>
-            <Select id="userId" {...paymentForm.register("userId")}>
-              <option value="">Select a user</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name} - {user.email}
-                </option>
-                ))}
-              </Select>
+            <Controller
+              control={paymentForm.control}
+              name="userId"
+              render={({ field }) => (
+                <Select
+                  id="userId"
+                  name={field.name}
+                  searchable
+                  searchValue={userSearchTerm}
+                  onSearchChange={setUserSearchTerm}
+                  value={field.value ?? ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                >
+                  <option value="">Select a user</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} - {user.email}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            />
             <FieldError message={paymentForm.formState.errors.userId?.message} />
           </div>
           <div className="space-y-1">
@@ -251,11 +380,24 @@ export default function PaymentsPage() {
           </div>
           <div className="space-y-1">
             <Label htmlFor="status">Forced Status</Label>
-            <Select id="status" {...paymentForm.register("status")}>
-              <option value="PENDING">PENDING</option>
-              <option value="DISPUTED">DISPUTED</option>
-              <option value="CANCELLED">CANCELLED</option>
-            </Select>
+            <Controller
+              control={paymentForm.control}
+              name="status"
+              render={({ field }) => (
+                <Select
+                  id="status"
+                  name={field.name}
+                  value={field.value ?? ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                >
+                  <option value="PENDING">PENDING</option>
+                  <option value="DISPUTED">DISPUTED</option>
+                  <option value="CANCELLED">CANCELLED</option>
+                </Select>
+              )}
+            />
           </div>
           <Button className="w-full" type="submit" disabled={createState.isLoading}>
             {createState.isLoading ? (
@@ -279,17 +421,33 @@ export default function PaymentsPage() {
         <form className="space-y-3" onSubmit={onAddTransaction}>
           <div className="space-y-1">
             <Label htmlFor="paymentId">Payment</Label>
-            <Select id="paymentId" {...txForm.register("paymentId")}>
-              <option value="">Select a payment</option>
-              {paymentOptions.map((payment) => {
-                const userLabel = payment.user?.name ?? userLookup.get(payment.userId)?.name ?? formatCompactId(payment.userId);
-                return (
-                  <option key={payment.id} value={payment.id}>
-                    {userLabel} - {formatCurrency(payment.totalAmount)} - {formatDate(payment.createdAt)}
-                  </option>
-                );
-              })}
-            </Select>
+            <Controller
+              control={txForm.control}
+              name="paymentId"
+              render={({ field }) => (
+                <Select
+                  id="paymentId"
+                  name={field.name}
+                  searchable
+                  searchValue={paymentSearchTerm}
+                  onSearchChange={setPaymentSearchTerm}
+                  value={field.value ?? ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                >
+                  <option value="">Select a payment</option>
+                  {paymentOptions.map((payment) => {
+                    const userLabel = payment.user?.name ?? userLookup.get(payment.userId)?.name ?? formatCompactId(payment.userId);
+                    return (
+                      <option key={payment.id} value={payment.id}>
+                        {userLabel} - {formatCurrency(payment.totalAmount)} - {formatDate(payment.createdAt)}
+                      </option>
+                    );
+                  })}
+                </Select>
+              )}
+            />
             <FieldError message={txForm.formState.errors.paymentId?.message} />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -305,13 +463,26 @@ export default function PaymentsPage() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="method">Method</Label>
-              <Select id="method" {...txForm.register("method")}>
-                <option value="UPI">UPI</option>
-                <option value="BANK_TRANSFER">BANK_TRANSFER</option>
-                <option value="CASH">CASH</option>
-                <option value="CARD">CARD</option>
-                <option value="OTHER">OTHER</option>
-              </Select>
+              <Controller
+                control={txForm.control}
+                name="method"
+                render={({ field }) => (
+                  <Select
+                    id="method"
+                    name={field.name}
+                    value={field.value ?? ""}
+                    onChange={(event) => field.onChange(event.target.value)}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                  >
+                    <option value="UPI">UPI</option>
+                    <option value="BANK_TRANSFER">BANK_TRANSFER</option>
+                    <option value="CASH">CASH</option>
+                    <option value="CARD">CARD</option>
+                    <option value="OTHER">OTHER</option>
+                  </Select>
+                )}
+              />
             </div>
           </div>
           <div className="space-y-1">

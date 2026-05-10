@@ -39,8 +39,8 @@ export default function LoginForm() {
   const form = useForm<LoginValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      email: "admin@pv.local",
-      password: "admin123",
+      email: "",
+      password: "",
     },
   });
 
@@ -95,7 +95,7 @@ export default function LoginForm() {
           <form className="mt-6 space-y-4" onSubmit={onSubmit}>
             <div className="space-y-1">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" {...form.register("email")} />
+              <Input id="email" type="email" placeholder="email@photo.voltaic" {...form.register("email")} />
               <FieldError message={form.formState.errors.email?.message} />
             </div>
             <div className="space-y-1">
@@ -104,6 +104,7 @@ export default function LoginForm() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
                   className="pr-24"
                   {...form.register("password")}
                 />

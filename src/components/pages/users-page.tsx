@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PencilLine, Search, UserPlus, Users2 } from "lucide-react";
+import { Eye, EyeOff, PencilLine, Search, UserPlus, Users2 } from "lucide-react";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { TableSkeleton } from "@/components/dashboard/table-skeleton";
@@ -108,20 +108,38 @@ export default function UsersPage() {
   const isAdmin = role === "ADMIN";
   const [openCreate, setOpenCreate] = useState(false);
   const [openUpdate, setOpenUpdate] = useState(false);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showUpdatePassword, setShowUpdatePassword] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [directorySearchTerm, setDirectorySearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [banner, setBanner] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
+  const debouncedDirectorySearchTerm = useDebouncedValue(directorySearchTerm);
 
   const { data: usersResponse, isLoading } = useGetUsersQuery(
-    { search: debouncedSearchTerm, page, limit: pageSize },
+    {
+      search: debouncedSearchTerm,
+      status: statusFilter || undefined,
+      sortBy,
+      sortOrder,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      page,
+      limit: pageSize,
+    },
     {
       skip: !role || role === "AGENT",
     },
   );
   const { data: directoryResponse } = useGetUsersQuery(
-    { page: 1, limit: 100 },
+    { search: debouncedDirectorySearchTerm, page: 1, limit: 50 },
     {
       skip: !role || role === "AGENT",
     },
@@ -160,6 +178,7 @@ export default function UsersPage() {
       showToast({ type: "success", title: "User created", description: message });
       setOpenCreate(false);
       createForm.reset({ role: "AGENT" });
+      setDirectorySearchTerm("");
     } catch (error) {
       const message = getErrorMessage(error, "Failed to create user.");
       setBanner({ type: "error", text: message });
@@ -188,6 +207,7 @@ export default function UsersPage() {
       showToast({ type: "success", title: "User updated", description: message });
       setOpenUpdate(false);
       updateForm.reset();
+      setDirectorySearchTerm("");
     } catch (error) {
       const message = getErrorMessage(error, "Failed to update user.");
       setBanner({ type: "error", text: message });
@@ -206,6 +226,7 @@ export default function UsersPage() {
       managerId: user.managerId ?? "",
       password: "",
     });
+    setDirectorySearchTerm("");
     setOpenUpdate(true);
   };
 
@@ -227,7 +248,13 @@ export default function UsersPage() {
         description="Manage hierarchy, roles, and team assignments."
         action={
           isAdmin ? (
-            <Button className="w-full sm:w-auto" onClick={() => setOpenCreate(true)}>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setDirectorySearchTerm("");
+                setOpenCreate(true);
+              }}
+            >
               <UserPlus className="h-4 w-4" />
               Create User
             </Button>
@@ -253,6 +280,76 @@ export default function UsersPage() {
             }}
             placeholder="Search users by name, email, role, or manager"
           />
+        </div>
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="space-y-1">
+            <Label htmlFor="usersStatusFilter">Role</Label>
+            <Select
+              id="usersStatusFilter"
+              value={statusFilter}
+              onChange={(event) => {
+                setStatusFilter(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All roles</option>
+              <option value="ADMIN">ADMIN</option>
+              <option value="AREA_MANAGER">AREA_MANAGER</option>
+              <option value="AGENT">AGENT</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="usersSortBy">Sort By</Label>
+            <Select
+              id="usersSortBy"
+              value={sortBy}
+              onChange={(event) => {
+                setSortBy(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="createdAt">Created Date</option>
+              <option value="name">Name</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="usersSortOrder">Sort Order</Label>
+            <Select
+              id="usersSortOrder"
+              value={sortOrder}
+              onChange={(event) => {
+                setSortOrder(event.target.value as "asc" | "desc");
+                setPage(1);
+              }}
+            >
+              <option value="desc">Newest first</option>
+              <option value="asc">Oldest first</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="usersStartDate">Start Date</Label>
+            <Input
+              id="usersStartDate"
+              type="date"
+              value={startDate}
+              onChange={(event) => {
+                setStartDate(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="usersEndDate">End Date</Label>
+            <Input
+              id="usersEndDate"
+              type="date"
+              value={endDate}
+              onChange={(event) => {
+                setEndDate(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
         </div>
         {isLoading ? (
           <TableSkeleton rows={6} />
@@ -322,28 +419,75 @@ export default function UsersPage() {
           </div>
           <div className="space-y-1">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" {...createForm.register("password")} />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showCreatePassword ? "text" : "password"}
+                className="pr-24"
+                {...createForm.register("password")}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 h-8 -translate-y-1/2 px-2"
+                onClick={() => setShowCreatePassword((value) => !value)}
+                aria-label={showCreatePassword ? "Hide password" : "Show password"}
+              >
+                {showCreatePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showCreatePassword ? "Hide" : "Show"}
+              </Button>
+            </div>
             <FieldError message={createForm.formState.errors.password?.message} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="role">Role</Label>
-            <Select id="role" {...createForm.register("role")}>
-              <option value="AGENT">AGENT</option>
-              <option value="AREA_MANAGER">AREA_MANAGER</option>
-              <option value="ADMIN">ADMIN</option>
-            </Select>
+            <Controller
+              control={createForm.control}
+              name="role"
+              render={({ field }) => (
+                <Select
+                  id="role"
+                  name={field.name}
+                  value={field.value ?? ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                >
+                  <option value="AGENT">AGENT</option>
+                  <option value="AREA_MANAGER">AREA_MANAGER</option>
+                  <option value="ADMIN">ADMIN</option>
+                </Select>
+              )}
+            />
           </div>
           {selectedCreateRole === "AGENT" ? (
             <div className="space-y-1">
               <Label htmlFor="managerId">Reporting Manager</Label>
-              <Select id="managerId" {...createForm.register("managerId")}>
-                <option value="">Select a manager</option>
-                {managers.map((manager) => (
-                  <option key={manager.id} value={manager.id}>
-                    {manager.name} - {manager.email}
-                  </option>
-                ))}
-              </Select>
+              <Controller
+                control={createForm.control}
+                name="managerId"
+                render={({ field }) => (
+                  <Select
+                    id="managerId"
+                    name={field.name}
+                    searchable
+                    onSearchChange={setDirectorySearchTerm}
+                    searchValue={directorySearchTerm}
+                    value={field.value ?? ""}
+                    onChange={(event) => field.onChange(event.target.value)}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                  >
+                    <option value="">Select a manager</option>
+                    {managers.map((manager) => (
+                      <option key={manager.id} value={manager.id}>
+                        {manager.name} - {manager.email}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              />
               <FieldError message={createForm.formState.errors.managerId?.message} />
             </div>
           ) : null}
@@ -371,6 +515,9 @@ export default function UsersPage() {
             <Label htmlFor="updateUser">User</Label>
             <Select
               id="updateUser"
+              searchable
+              onSearchChange={setDirectorySearchTerm}
+              searchValue={directorySearchTerm}
               value={selectedUpdateId ?? ""}
               onChange={(event) => openUpdateForUser(event.target.value)}
             >
@@ -395,36 +542,79 @@ export default function UsersPage() {
           </div>
           <div className="space-y-1">
             <Label htmlFor="updateRole">Role</Label>
-            <Select id="updateRole" {...updateForm.register("role")}>
-              <option value="AGENT">AGENT</option>
-              <option value="AREA_MANAGER">AREA_MANAGER</option>
-              <option value="ADMIN">ADMIN</option>
-            </Select>
+            <Controller
+              control={updateForm.control}
+              name="role"
+              render={({ field }) => (
+                <Select
+                  id="updateRole"
+                  name={field.name}
+                  value={field.value ?? ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                >
+                  <option value="AGENT">AGENT</option>
+                  <option value="AREA_MANAGER">AREA_MANAGER</option>
+                  <option value="ADMIN">ADMIN</option>
+                </Select>
+              )}
+            />
             <FieldError message={updateForm.formState.errors.role?.message} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="updateManager">Manager</Label>
-            <Select id="updateManager" {...updateForm.register("managerId")}>
-              <option value="">{selectedUpdateRole === "AGENT" ? "Select a manager" : "No manager"}</option>
-              <option value="null">Remove manager assignment</option>
-              {managers
-                .filter((manager) => manager.id !== selectedUpdateId)
-                .map((manager) => (
-                  <option key={manager.id} value={manager.id}>
-                    {manager.name} - {manager.email}
-                  </option>
-                ))}
-            </Select>
+            <Controller
+              control={updateForm.control}
+              name="managerId"
+              render={({ field }) => (
+                <Select
+                  id="updateManager"
+                  name={field.name}
+                  searchable
+                  onSearchChange={setDirectorySearchTerm}
+                  searchValue={directorySearchTerm}
+                  value={field.value ?? ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                >
+                  <option value="">{selectedUpdateRole === "AGENT" ? "Select a manager" : "No manager"}</option>
+                  <option value="null">Remove manager assignment</option>
+                  {managers
+                    .filter((manager) => manager.id !== selectedUpdateId)
+                    .map((manager) => (
+                      <option key={manager.id} value={manager.id}>
+                        {manager.name} - {manager.email}
+                      </option>
+                    ))}
+                </Select>
+              )}
+            />
             <FieldError message={updateForm.formState.errors.managerId?.message} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="updatePassword">Reset Password (optional)</Label>
-            <Input
-              id="updatePassword"
-              type="password"
-              placeholder="Leave blank to keep current password"
-              {...updateForm.register("password")}
-            />
+            <div className="relative">
+              <Input
+                id="updatePassword"
+                type={showUpdatePassword ? "text" : "password"}
+                placeholder="Leave blank to keep current password"
+                className="pr-24"
+                {...updateForm.register("password")}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 h-8 -translate-y-1/2 px-2"
+                onClick={() => setShowUpdatePassword((value) => !value)}
+                aria-label={showUpdatePassword ? "Hide password" : "Show password"}
+              >
+                {showUpdatePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showUpdatePassword ? "Hide" : "Show"}
+              </Button>
+            </div>
             <FieldError message={updateForm.formState.errors.password?.message} />
           </div>
           <Button type="submit" className="w-full" disabled={updateState.isLoading}>

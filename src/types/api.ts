@@ -11,8 +11,19 @@ export type PaymentMethod = "BANK_TRANSFER" | "UPI" | "CASH" | "CARD" | "OTHER";
 
 export interface ListQueryParams {
   search?: string;
+  status?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  startDate?: string;
+  endDate?: string;
   page?: number;
   limit?: number;
+}
+
+export type ListFilterMode = "server" | "client";
+
+export interface ListRequestParams extends ListQueryParams {
+  filterMode?: ListFilterMode;
 }
 
 export interface PaginationMeta {

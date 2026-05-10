@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, Search } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Input } from "./input";
 
@@ -16,6 +16,8 @@ interface SearchableSelectProps {
   value: string;
   options: SearchableSelectOption[];
   onChange: (value: string) => void;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyMessage?: string;
@@ -27,6 +29,8 @@ export function SearchableSelect({
   value,
   options,
   onChange,
+  searchValue,
+  onSearchChange,
   placeholder = "Select an option",
   searchPlaceholder = "Search...",
   emptyMessage = "No options found",
@@ -34,20 +38,24 @@ export function SearchableSelect({
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const resolvedQuery = searchValue ?? query;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find((option) => option.value === value) ?? null;
-  const closeDropdown = () => {
+  const closeDropdown = useCallback(() => {
     setOpen(false);
-    setQuery("");
-  };
+    if (searchValue === undefined) {
+      setQuery("");
+    }
+    onSearchChange?.("");
+  }, [onSearchChange, searchValue]);
 
   const filteredOptions = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
+    const normalized = resolvedQuery.trim().toLowerCase();
     if (!normalized) return options;
     return options.filter((option) =>
       [option.label, ...(option.keywords ?? [])].join(" ").toLowerCase().includes(normalized),
     );
-  }, [options, query]);
+  }, [options, resolvedQuery]);
 
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {
@@ -68,7 +76,7 @@ export function SearchableSelect({
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onEscape);
     };
-  }, []);
+  }, [closeDropdown]);
 
   return (
     <div ref={rootRef} className="relative">
@@ -78,7 +86,8 @@ export function SearchableSelect({
         disabled={disabled}
         aria-expanded={open}
         className={cn(
-          "flex h-11 w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-3 text-left text-sm text-slate-900 outline-none transition focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:h-10",
+          "relative flex h-11 w-full items-center rounded-xl border border-slate-300 bg-white px-3 pr-9 text-left text-sm text-slate-900 outline-none transition focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:h-10",
+          open && "border-sky-500 ring-2 ring-sky-500",
         )}
         onClick={() => {
           if (open) {
@@ -91,7 +100,12 @@ export function SearchableSelect({
         <span className={cn(!selected ? "text-slate-400 dark:text-slate-500" : "")}>
           {selected?.label ?? placeholder}
         </span>
-        <ChevronDown className={cn("h-4 w-4 text-slate-400 transition-transform", open ? "rotate-180" : "")} />
+        <ChevronDown
+          className={cn(
+            "pointer-events-none absolute right-[5px] top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-transform",
+            open ? "rotate-180" : "",
+          )}
+        />
       </button>
 
       {open ? (
@@ -100,8 +114,13 @@ export function SearchableSelect({
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               autoFocus
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              value={resolvedQuery}
+              onChange={(event) => {
+                if (searchValue === undefined) {
+                  setQuery(event.target.value);
+                }
+                onSearchChange?.(event.target.value);
+              }}
               placeholder={searchPlaceholder}
               className="pl-9"
             />

@@ -9,7 +9,9 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { PaginationControls } from "@/components/ui/pagination-controls";
+import { Select } from "@/components/ui/select";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { formatCompactId, formatDateTime } from "@/lib/utils";
 import { useGetAuditLogsQuery, useGetSessionQuery, useGetUsersQuery } from "@/store/services/pvApi";
@@ -18,11 +20,23 @@ export default function AuditLogsPage() {
   const { data: session } = useGetSessionQuery();
   const isAdmin = session?.user?.role === "ADMIN";
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("timestamp");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
   const { data: logsResponse, isLoading } = useGetAuditLogsQuery(
-    { search: debouncedSearchTerm, page, limit: pageSize },
+    {
+      search: debouncedSearchTerm,
+      sortBy,
+      sortOrder,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      page,
+      limit: pageSize,
+    },
     { skip: !isAdmin },
   );
   const { data: usersResponse } = useGetUsersQuery({ page: 1, limit: 100 }, { skip: !isAdmin });
@@ -63,6 +77,59 @@ export default function AuditLogsPage() {
             }}
             placeholder="Search by time, action, entity, or performer"
           />
+        </div>
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1">
+            <Label htmlFor="auditSortBy">Sort By</Label>
+            <Select
+              id="auditSortBy"
+              value={sortBy}
+              onChange={(event) => {
+                setSortBy(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="timestamp">Timestamp</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="auditSortOrder">Sort Order</Label>
+            <Select
+              id="auditSortOrder"
+              value={sortOrder}
+              onChange={(event) => {
+                setSortOrder(event.target.value as "asc" | "desc");
+                setPage(1);
+              }}
+            >
+              <option value="desc">Newest first</option>
+              <option value="asc">Oldest first</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="auditStartDate">Start Date</Label>
+            <Input
+              id="auditStartDate"
+              type="date"
+              value={startDate}
+              onChange={(event) => {
+                setStartDate(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="auditEndDate">End Date</Label>
+            <Input
+              id="auditEndDate"
+              type="date"
+              value={endDate}
+              onChange={(event) => {
+                setEndDate(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
         </div>
         {isLoading ? (
           <TableSkeleton rows={10} />

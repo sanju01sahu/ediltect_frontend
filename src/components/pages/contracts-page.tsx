@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { TableSkeleton } from "@/components/dashboard/table-skeleton";
@@ -58,19 +58,39 @@ export default function ContractsPage() {
   const role = session?.user?.role;
   const needsAgent = role === "ADMIN" || role === "AREA_MANAGER";
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("installationDate");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [solutionSearchTerm, setSolutionSearchTerm] = useState("");
+  const [agentSearchTerm, setAgentSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openModal, setOpenModal] = useState(false);
   const [banner, setBanner] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
+  const debouncedSolutionSearchTerm = useDebouncedValue(solutionSearchTerm);
+  const debouncedAgentSearchTerm = useDebouncedValue(agentSearchTerm);
 
   const { data: contractsResponse, isLoading } = useGetContractsQuery({
     search: debouncedSearchTerm,
+    status: statusFilter || undefined,
+    sortBy,
+    sortOrder,
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
     page,
     limit: pageSize,
   });
-  const { data: usersResponse } = useGetUsersQuery({ page: 1, limit: 100 }, { skip: !role });
-  const { data: solutionsResponse } = useGetSolutionsQuery({ page: 1, limit: 100 }, { skip: !role });
+  const { data: usersResponse } = useGetUsersQuery(
+    { search: debouncedAgentSearchTerm, page: 1, limit: 50 },
+    { skip: !role },
+  );
+  const { data: solutionsResponse } = useGetSolutionsQuery(
+    { search: debouncedSolutionSearchTerm, page: 1, limit: 50 },
+    { skip: !role },
+  );
   const contracts = contractsResponse?.items ?? [];
   const users = usersResponse?.items ?? [];
   const solutions = solutionsResponse?.items ?? [];
@@ -126,6 +146,8 @@ export default function ContractsPage() {
       setBanner({ type: "success", text: message });
       showToast({ type: "success", title: "Contract created", description: message });
       setOpenModal(false);
+      setSolutionSearchTerm("");
+      setAgentSearchTerm("");
       form.reset({
         status: "ACTIVE",
         customerName: "",
@@ -146,7 +168,18 @@ export default function ContractsPage() {
       <PageHeader
         title="Contracts"
         description="Installation contracts with automatic base commission generation."
-        action={<Button className="w-full sm:w-auto" onClick={() => setOpenModal(true)}>Create Contract</Button>}
+        action={
+          <Button
+            className="w-full sm:w-auto"
+            onClick={() => {
+              setSolutionSearchTerm("");
+              setAgentSearchTerm("");
+              setOpenModal(true);
+            }}
+          >
+            Create Contract
+          </Button>
+        }
       />
 
       {banner ? <Alert className="mb-4" type={banner.type}>{banner.text}</Alert> : null}
@@ -163,6 +196,77 @@ export default function ContractsPage() {
             }}
             placeholder="Search by customer, agent, status, solution, or version id"
           />
+        </div>
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="space-y-1">
+            <Label htmlFor="contractsStatusFilter">Status</Label>
+            <Select
+              id="contractsStatusFilter"
+              value={statusFilter}
+              onChange={(event) => {
+                setStatusFilter(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All statuses</option>
+              <option value="DRAFT">DRAFT</option>
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="COMPLETED">COMPLETED</option>
+              <option value="CANCELLED">CANCELLED</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="contractsSortBy">Sort By</Label>
+            <Select
+              id="contractsSortBy"
+              value={sortBy}
+              onChange={(event) => {
+                setSortBy(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="installationDate">Installation Date</option>
+              <option value="createdAt">Created Date</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="contractsSortOrder">Sort Order</Label>
+            <Select
+              id="contractsSortOrder"
+              value={sortOrder}
+              onChange={(event) => {
+                setSortOrder(event.target.value as "asc" | "desc");
+                setPage(1);
+              }}
+            >
+              <option value="desc">Newest first</option>
+              <option value="asc">Oldest first</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="contractsStartDate">Start Date</Label>
+            <Input
+              id="contractsStartDate"
+              type="date"
+              value={startDate}
+              onChange={(event) => {
+                setStartDate(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="contractsEndDate">End Date</Label>
+            <Input
+              id="contractsEndDate"
+              type="date"
+              value={endDate}
+              onChange={(event) => {
+                setEndDate(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
         </div>
         {isLoading ? (
           <TableSkeleton rows={8} />
@@ -229,14 +333,30 @@ export default function ContractsPage() {
         <form className="space-y-3" onSubmit={onSubmit}>
           <div className="space-y-1">
             <Label htmlFor="solutionId">Solution</Label>
-            <Select id="solutionId" {...form.register("solutionId")}>
-              <option value="">Select a solution</option>
-              {solutions.map((solution) => (
-                <option key={solution.id} value={solution.id}>
-                  {solution.name}
-                </option>
-                ))}
-              </Select>
+            <Controller
+              control={form.control}
+              name="solutionId"
+              render={({ field }) => (
+                <Select
+                  id="solutionId"
+                  name={field.name}
+                  searchable
+                  searchValue={solutionSearchTerm}
+                  onSearchChange={setSolutionSearchTerm}
+                  value={field.value ?? ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                >
+                  <option value="">Select a solution</option>
+                  {solutions.map((solution) => (
+                    <option key={solution.id} value={solution.id}>
+                      {solution.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            />
             <FieldError message={form.formState.errors.solutionId?.message} />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -247,25 +367,54 @@ export default function ContractsPage() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="status">Status</Label>
-              <Select id="status" {...form.register("status")}>
-                <option value="DRAFT">DRAFT</option>
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="COMPLETED">COMPLETED</option>
-                <option value="CANCELLED">CANCELLED</option>
-              </Select>
+              <Controller
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <Select
+                    id="status"
+                    name={field.name}
+                    value={field.value ?? ""}
+                    onChange={(event) => field.onChange(event.target.value)}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                  >
+                    <option value="DRAFT">DRAFT</option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="COMPLETED">COMPLETED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                  </Select>
+                )}
+              />
             </div>
           </div>
           {needsAgent ? (
             <div className="space-y-1">
               <Label htmlFor="agentId">Assigned Agent</Label>
-              <Select id="agentId" {...form.register("agentId")}>
-                <option value="">Select an agent</option>
-                {agents.map((agent) => (
-                  <option key={agent.id} value={agent.id}>
-                    {agent.name} - {agent.email}
-                  </option>
-                ))}
-              </Select>
+              <Controller
+                control={form.control}
+                name="agentId"
+                render={({ field }) => (
+                  <Select
+                    id="agentId"
+                    name={field.name}
+                    searchable
+                    searchValue={agentSearchTerm}
+                    onSearchChange={setAgentSearchTerm}
+                    value={field.value ?? ""}
+                    onChange={(event) => field.onChange(event.target.value)}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                  >
+                    <option value="">Select an agent</option>
+                    {agents.map((agent) => (
+                      <option key={agent.id} value={agent.id}>
+                        {agent.name} - {agent.email}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              />
               <FieldError message={form.formState.errors.agentId?.message} />
             </div>
           ) : null}

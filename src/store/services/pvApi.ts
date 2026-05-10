@@ -18,7 +18,9 @@ import {
   Contract,
   ContractStatus,
   CreateVersionResponse,
+  ListFilterMode,
   ListQueryParams,
+  ListRequestParams,
   LoginResponse,
   ManagerNetworkPerformance,
   MonthlyEarning,
@@ -177,6 +179,21 @@ function buildListQueryString(params?: ListQueryParams) {
   if (params.search && params.search.trim().length > 0) {
     query.set("search", params.search.trim());
   }
+  if (params.status && params.status.trim().length > 0) {
+    query.set("status", params.status.trim());
+  }
+  if (params.sortBy && params.sortBy.trim().length > 0) {
+    query.set("sortBy", params.sortBy.trim());
+  }
+  if (params.sortOrder) {
+    query.set("sortOrder", params.sortOrder);
+  }
+  if (params.startDate && params.startDate.trim().length > 0) {
+    query.set("startDate", params.startDate.trim());
+  }
+  if (params.endDate && params.endDate.trim().length > 0) {
+    query.set("endDate", params.endDate.trim());
+  }
   if (params.page) {
     query.set("page", String(params.page));
   }
@@ -186,6 +203,289 @@ function buildListQueryString(params?: ListQueryParams) {
 
   const queryString = query.toString();
   return queryString ? `?${queryString}` : "";
+}
+
+type ListQueryExecutor = (
+  args: string | FetchArgs,
+) => Promise<{ data?: unknown; error?: FetchBaseQueryError }>;
+
+function splitListParams(params?: ListRequestParams | void) {
+  if (!params) {
+    return { filterMode: "client" as ListFilterMode, query: undefined as ListQueryParams | undefined };
+  }
+  const { filterMode = "client", ...query } = params;
+  return { filterMode, query };
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function asPaginatedResponse<T>(payload: unknown): PaginatedResponse<T> | null {
+  if (!isObject(payload)) return null;
+  const items = payload.items;
+  const pagination = payload.pagination;
+  if (!Array.isArray(items) || !isObject(pagination)) return null;
+  const page = Number(pagination.page);
+  const limit = Number(pagination.limit);
+  const total = Number(pagination.total);
+  const totalPages = Number(pagination.totalPages);
+  if (!Number.isFinite(page) || !Number.isFinite(limit) || !Number.isFinite(total) || !Number.isFinite(totalPages)) {
+    return null;
+  }
+  return {
+    items: items as T[],
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+    },
+  };
+}
+
+function normalizeText(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function textIncludes(haystack: unknown, needle: string) {
+  if (!needle) return true;
+  return normalizeText(haystack).includes(needle);
+}
+
+function toDateMs(value: unknown) {
+  const raw = typeof value === "string" ? value : "";
+  if (!raw) return Number.NaN;
+  const ms = Date.parse(raw);
+  return Number.isNaN(ms) ? Number.NaN : ms;
+}
+
+function inDateRange(value: unknown, startDate?: string, endDate?: string) {
+  if (!startDate && !endDate) return true;
+  const ms = toDateMs(value);
+  if (Number.isNaN(ms)) return false;
+  if (startDate) {
+    const start = Date.parse(startDate);
+    if (!Number.isNaN(start) && ms < start) return false;
+  }
+  if (endDate) {
+    const end = Date.parse(endDate);
+    if (!Number.isNaN(end)) {
+      const endExclusive = end + 24 * 60 * 60 * 1000;
+      if (ms >= endExclusive) return false;
+    }
+  }
+  return true;
+}
+
+function paginateItems<T>(items: T[], params?: ListQueryParams): PaginatedResponse<T> {
+  const page = params?.page && params.page > 0 ? params.page : 1;
+  const limit = params?.limit && params.limit > 0 ? params.limit : 10;
+  const total = items.length;
+  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+  const start = (page - 1) * limit;
+  return {
+    items: items.slice(start, start + limit),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+    },
+  };
+}
+
+async function fetchAllPages<T>(
+  endpointPath: string,
+  execute: ListQueryExecutor,
+): Promise<{ data?: T[]; error?: FetchBaseQueryError }> {
+  const pageSize = 100;
+  let page = 1;
+  let totalPages = 1;
+  const collected: T[] = [];
+
+  while (page <= totalPages) {
+    const queryString = `?page=${page}&limit=${pageSize}`;
+    const result = await execute(`${endpointPath}${queryString}`);
+    if (result.error) {
+      return { error: result.error };
+    }
+    const parsed = asPaginatedResponse<T>(result.data);
+    if (!parsed) {
+      return {
+        error: {
+          status: "PARSING_ERROR",
+          originalStatus: 500,
+          data: "Invalid list payload received from backend",
+          error: "Invalid response shape",
+        },
+      };
+    }
+    collected.push(...parsed.items);
+    totalPages = parsed.pagination.totalPages || 0;
+    if (totalPages === 0) break;
+    page += 1;
+  }
+
+  return { data: collected };
+}
+
+function sortByString<T>(items: T[], getValue: (item: T) => string, sortOrder: "asc" | "desc") {
+  return [...items].sort((a, b) => {
+    const compare = getValue(a).localeCompare(getValue(b), undefined, { sensitivity: "base" });
+    return sortOrder === "asc" ? compare : -compare;
+  });
+}
+
+function sortByDate<T>(items: T[], getValue: (item: T) => unknown, sortOrder: "asc" | "desc") {
+  return [...items].sort((a, b) => {
+    const left = toDateMs(getValue(a));
+    const right = toDateMs(getValue(b));
+    const safeLeft = Number.isNaN(left) ? 0 : left;
+    const safeRight = Number.isNaN(right) ? 0 : right;
+    return sortOrder === "asc" ? safeLeft - safeRight : safeRight - safeLeft;
+  });
+}
+
+function contractCustomerText(customerDetails: unknown) {
+  if (!isObject(customerDetails)) return "";
+  return [
+    customerDetails.name,
+    customerDetails.phone,
+    customerDetails.email,
+    customerDetails.site,
+    customerDetails.city,
+  ]
+    .map((part) => String(part ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
+function applyUserClientFilters(items: User[], params?: ListQueryParams) {
+  const query = normalizeText(params?.search);
+  const status = normalizeText(params?.status);
+  const filtered = items.filter((user) => {
+    const matchesStatus = !status || normalizeText(user.role) === status;
+    const matchesSearch =
+      !query ||
+      [user.name, user.email, user.role, user.manager?.name, user.manager?.email].some((value) => textIncludes(value, query));
+    const matchesDate = inDateRange(user.createdAt, params?.startDate, params?.endDate);
+    return matchesStatus && matchesSearch && matchesDate;
+  });
+  const sortOrder = params?.sortOrder ?? "desc";
+  if (params?.sortBy === "name") {
+    return sortByString(filtered, (user) => user.name ?? "", sortOrder);
+  }
+  return sortByDate(filtered, (user) => user.createdAt, sortOrder);
+}
+
+function applySolutionClientFilters(items: Solution[], params?: ListQueryParams) {
+  const query = normalizeText(params?.search);
+  const filtered = items.filter((solution) => {
+    const matchesSearch = !query || [solution.name, solution.id].some((value) => textIncludes(value, query));
+    const matchesDate = inDateRange(solution.createdAt, params?.startDate, params?.endDate);
+    return matchesSearch && matchesDate;
+  });
+  const sortOrder = params?.sortOrder ?? "desc";
+  if (params?.sortBy === "name") {
+    return sortByString(filtered, (solution) => solution.name ?? "", sortOrder);
+  }
+  return sortByDate(filtered, (solution) => solution.createdAt, sortOrder);
+}
+
+function applyContractClientFilters(items: Contract[], params?: ListQueryParams) {
+  const query = normalizeText(params?.search);
+  const status = normalizeText(params?.status);
+  const filtered = items.filter((contract) => {
+    const matchesStatus = !status || normalizeText(contract.status) === status;
+    const matchesSearch =
+      !query ||
+      [
+        contract.id,
+        contract.solutionVersionId,
+        contract.agentId,
+        contract.agent?.name,
+        contract.agent?.email,
+        contract.solutionVersion?.solution?.name,
+        contract.status,
+        contractCustomerText(contract.customerDetails),
+      ].some((value) => textIncludes(value, query));
+    const matchesDate = inDateRange(contract.installationDate, params?.startDate, params?.endDate);
+    return matchesStatus && matchesSearch && matchesDate;
+  });
+  const sortOrder = params?.sortOrder ?? "desc";
+  if (params?.sortBy === "installationDate") {
+    return sortByDate(filtered, (contract) => contract.installationDate, sortOrder);
+  }
+  return sortByDate(filtered, (contract) => contract.createdAt, sortOrder);
+}
+
+function applyCommissionClientFilters(items: Commission[], params?: ListQueryParams) {
+  const query = normalizeText(params?.search);
+  const filtered = items.filter((commission) => {
+    const matchesSearch =
+      !query ||
+      [
+        commission.id,
+        commission.contractId,
+        commission.userId,
+        commission.type,
+        commission.user?.name,
+        commission.user?.email,
+        contractCustomerText(commission.contract?.customerDetails),
+      ].some((value) => textIncludes(value, query));
+    const matchesDate = inDateRange(commission.createdAt, params?.startDate, params?.endDate);
+    return matchesSearch && matchesDate;
+  });
+  const sortOrder = params?.sortOrder ?? "desc";
+  if (params?.sortBy === "name") {
+    return sortByString(filtered, (commission) => commission.user?.name ?? "", sortOrder);
+  }
+  return sortByDate(filtered, (commission) => commission.createdAt, sortOrder);
+}
+
+function applyPaymentClientFilters(items: Payment[], params?: ListQueryParams) {
+  const query = normalizeText(params?.search);
+  const status = normalizeText(params?.status);
+  const filtered = items.filter((payment) => {
+    const matchesStatus =
+      !status ||
+      normalizeText(payment.status) === status ||
+      normalizeText(payment.effectiveStatus) === status;
+    const matchesSearch =
+      !query ||
+      [
+        payment.id,
+        payment.userId,
+        payment.status,
+        payment.effectiveStatus,
+        payment.user?.name,
+        payment.user?.email,
+        payment.totalAmount,
+      ].some((value) => textIncludes(value, query));
+    const matchesDate = inDateRange(payment.createdAt, params?.startDate, params?.endDate);
+    return matchesStatus && matchesSearch && matchesDate;
+  });
+  const sortOrder = params?.sortOrder ?? "desc";
+  if (params?.sortBy === "name") {
+    return sortByString(filtered, (payment) => payment.user?.name ?? "", sortOrder);
+  }
+  return sortByDate(filtered, (payment) => payment.createdAt, sortOrder);
+}
+
+function applyAuditLogClientFilters(items: AuditLog[], params?: ListQueryParams) {
+  const query = normalizeText(params?.search);
+  const filtered = items.filter((log) => {
+    const matchesSearch =
+      !query ||
+      [log.id, log.action, log.entityType, log.entityId, log.performedBy, log.timestamp].some((value) =>
+        textIncludes(value, query),
+      );
+    const matchesDate = inDateRange(log.timestamp, params?.startDate, params?.endDate);
+    return matchesSearch && matchesDate;
+  });
+  const sortOrder = params?.sortOrder ?? "desc";
+  return sortByDate(filtered, (log) => log.timestamp, sortOrder);
 }
 
 export const pvApi = createApi({
@@ -302,12 +602,42 @@ export const pvApi = createApi({
       },
       invalidatesTags: ["Session"],
     }),
-    getUsers: builder.query<PaginatedResponse<User>, ListQueryParams | void>({
-      query: (params) => `/users${buildListQueryString(params ?? undefined)}`,
+    getUsers: builder.query<PaginatedResponse<User>, ListRequestParams | void>({
+      async queryFn(params, api, extraOptions, baseQuery) {
+        const { filterMode, query } = splitListParams(params);
+        if (filterMode === "server") {
+          const result = await baseQuery(`/users${buildListQueryString(query)}`);
+          if (result.error) return { error: result.error };
+          const parsed = asPaginatedResponse<User>(result.data);
+          if (!parsed) {
+            return { error: { status: "CUSTOM_ERROR", error: "Invalid users response" } };
+          }
+          return { data: parsed };
+        }
+        const all = await fetchAllPages<User>("/users", baseQuery as ListQueryExecutor);
+        if (all.error) return { error: all.error };
+        const filtered = applyUserClientFilters(all.data ?? [], query);
+        return { data: paginateItems(filtered, query) };
+      },
       providesTags: ["Users"],
     }),
-    getSolutions: builder.query<PaginatedResponse<Solution>, ListQueryParams | void>({
-      query: (params) => `/solutions${buildListQueryString(params ?? undefined)}`,
+    getSolutions: builder.query<PaginatedResponse<Solution>, ListRequestParams | void>({
+      async queryFn(params, api, extraOptions, baseQuery) {
+        const { filterMode, query } = splitListParams(params);
+        if (filterMode === "server") {
+          const result = await baseQuery(`/solutions${buildListQueryString(query)}`);
+          if (result.error) return { error: result.error };
+          const parsed = asPaginatedResponse<Solution>(result.data);
+          if (!parsed) {
+            return { error: { status: "CUSTOM_ERROR", error: "Invalid solutions response" } };
+          }
+          return { data: parsed };
+        }
+        const all = await fetchAllPages<Solution>("/solutions", baseQuery as ListQueryExecutor);
+        if (all.error) return { error: all.error };
+        const filtered = applySolutionClientFilters(all.data ?? [], query);
+        return { data: paginateItems(filtered, query) };
+      },
       providesTags: ["Solutions"],
     }),
     createUser: builder.mutation<User, CreateUserRequest>({
@@ -354,16 +684,62 @@ export const pvApi = createApi({
       }),
       invalidatesTags: ["Contracts", "Commissions", "Reports"],
     }),
-    getContracts: builder.query<PaginatedResponse<Contract>, ListQueryParams | void>({
-      query: (params) => `/contracts${buildListQueryString(params ?? undefined)}`,
+    getContracts: builder.query<PaginatedResponse<Contract>, ListRequestParams | void>({
+      async queryFn(params, api, extraOptions, baseQuery) {
+        const { filterMode, query } = splitListParams(params);
+        if (filterMode === "server") {
+          const result = await baseQuery(`/contracts${buildListQueryString(query)}`);
+          if (result.error) return { error: result.error };
+          const parsed = asPaginatedResponse<Contract>(result.data);
+          if (!parsed) {
+            return { error: { status: "CUSTOM_ERROR", error: "Invalid contracts response" } };
+          }
+          return { data: parsed };
+        }
+        const all = await fetchAllPages<Contract>("/contracts", baseQuery as ListQueryExecutor);
+        if (all.error) return { error: all.error };
+        const filtered = applyContractClientFilters(all.data ?? [], query);
+        return { data: paginateItems(filtered, query) };
+      },
       providesTags: ["Contracts"],
     }),
-    getCommissions: builder.query<PaginatedResponse<Commission>, ListQueryParams | void>({
-      query: (params) => `/commissions${buildListQueryString(params ?? undefined)}`,
+    getCommissions: builder.query<PaginatedResponse<Commission>, ListRequestParams | void>({
+      async queryFn(params, api, extraOptions, baseQuery) {
+        const { filterMode, query } = splitListParams(params);
+        if (filterMode === "server") {
+          const result = await baseQuery(`/commissions${buildListQueryString(query)}`);
+          if (result.error) return { error: result.error };
+          const parsed = asPaginatedResponse<Commission>(result.data);
+          if (!parsed) {
+            return { error: { status: "CUSTOM_ERROR", error: "Invalid commissions response" } };
+          }
+          return { data: parsed };
+        }
+        const all = await fetchAllPages<Commission>("/commissions", baseQuery as ListQueryExecutor);
+        if (all.error) return { error: all.error };
+        const filtered = applyCommissionClientFilters(all.data ?? [], query);
+        return { data: paginateItems(filtered, query) };
+      },
       providesTags: ["Commissions"],
     }),
-    getCommissionsByUser: builder.query<PaginatedResponse<Commission>, { userId: string } & ListQueryParams>({
-      query: ({ userId, ...params }) => `/commissions/${userId}${buildListQueryString(params)}`,
+    getCommissionsByUser: builder.query<PaginatedResponse<Commission>, { userId: string } & ListRequestParams>({
+      async queryFn(params, api, extraOptions, baseQuery) {
+        const { userId, ...rest } = params;
+        const { filterMode, query } = splitListParams(rest);
+        if (filterMode === "server") {
+          const result = await baseQuery(`/commissions/${userId}${buildListQueryString(query)}`);
+          if (result.error) return { error: result.error };
+          const parsed = asPaginatedResponse<Commission>(result.data);
+          if (!parsed) {
+            return { error: { status: "CUSTOM_ERROR", error: "Invalid user commissions response" } };
+          }
+          return { data: parsed };
+        }
+        const all = await fetchAllPages<Commission>(`/commissions/${userId}`, baseQuery as ListQueryExecutor);
+        if (all.error) return { error: all.error };
+        const filtered = applyCommissionClientFilters(all.data ?? [], query);
+        return { data: paginateItems(filtered, query) };
+      },
       providesTags: ["Commissions"],
     }),
     runMonthlyBonus: builder.mutation<BonusRunResponse, MonthlyQuery>({
@@ -374,8 +750,23 @@ export const pvApi = createApi({
       }),
       invalidatesTags: ["Commissions", "Reports"],
     }),
-    getPayments: builder.query<PaginatedResponse<Payment>, ListQueryParams | void>({
-      query: (params) => `/payments${buildListQueryString(params ?? undefined)}`,
+    getPayments: builder.query<PaginatedResponse<Payment>, ListRequestParams | void>({
+      async queryFn(params, api, extraOptions, baseQuery) {
+        const { filterMode, query } = splitListParams(params);
+        if (filterMode === "server") {
+          const result = await baseQuery(`/payments${buildListQueryString(query)}`);
+          if (result.error) return { error: result.error };
+          const parsed = asPaginatedResponse<Payment>(result.data);
+          if (!parsed) {
+            return { error: { status: "CUSTOM_ERROR", error: "Invalid payments response" } };
+          }
+          return { data: parsed };
+        }
+        const all = await fetchAllPages<Payment>("/payments", baseQuery as ListQueryExecutor);
+        if (all.error) return { error: all.error };
+        const filtered = applyPaymentClientFilters(all.data ?? [], query);
+        return { data: paginateItems(filtered, query) };
+      },
       providesTags: ["Payments"],
     }),
     createPayment: builder.mutation<Payment, CreatePaymentRequest>({
@@ -394,8 +785,23 @@ export const pvApi = createApi({
       }),
       invalidatesTags: ["Payments", "Reports"],
     }),
-    getAuditLogs: builder.query<PaginatedResponse<AuditLog>, ListQueryParams | void>({
-      query: (params) => `/audit-logs${buildListQueryString(params ?? undefined)}`,
+    getAuditLogs: builder.query<PaginatedResponse<AuditLog>, ListRequestParams | void>({
+      async queryFn(params, api, extraOptions, baseQuery) {
+        const { filterMode, query } = splitListParams(params);
+        if (filterMode === "server") {
+          const result = await baseQuery(`/audit-logs${buildListQueryString(query)}`);
+          if (result.error) return { error: result.error };
+          const parsed = asPaginatedResponse<AuditLog>(result.data);
+          if (!parsed) {
+            return { error: { status: "CUSTOM_ERROR", error: "Invalid audit logs response" } };
+          }
+          return { data: parsed };
+        }
+        const all = await fetchAllPages<AuditLog>("/audit-logs", baseQuery as ListQueryExecutor);
+        if (all.error) return { error: all.error };
+        const filtered = applyAuditLogClientFilters(all.data ?? [], query);
+        return { data: paginateItems(filtered, query) };
+      },
       providesTags: ["Audit"],
     }),
     getMonthlyEarnings: builder.query<MonthlyEarning[], MonthlyQuery>({

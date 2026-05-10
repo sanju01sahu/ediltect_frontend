@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { TableSkeleton } from "@/components/dashboard/table-skeleton";
 import { showToast } from "@/lib/toast";
@@ -61,31 +62,61 @@ export default function SolutionsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSolutionId, setActiveSolutionId] = useState("");
   const [versionSearchTerm, setVersionSearchTerm] = useState("");
+  const [versionSolutionSearchTerm, setVersionSolutionSearchTerm] = useState("");
+  const [catalogSortBy, setCatalogSortBy] = useState("name");
+  const [catalogSortOrder, setCatalogSortOrder] = useState<"asc" | "desc">("asc");
+  const [catalogStartDate, setCatalogStartDate] = useState("");
+  const [catalogEndDate, setCatalogEndDate] = useState("");
+  const [versionSortBy, setVersionSortBy] = useState("validFrom");
+  const [versionSortOrder, setVersionSortOrder] = useState<"asc" | "desc">("desc");
+  const [versionStartDate, setVersionStartDate] = useState("");
+  const [versionEndDate, setVersionEndDate] = useState("");
   const [catalogPage, setCatalogPage] = useState(1);
   const [catalogPageSize, setCatalogPageSize] = useState(10);
   const [versionPage, setVersionPage] = useState(1);
   const [versionPageSize, setVersionPageSize] = useState(10);
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
   const debouncedVersionSearchTerm = useDebouncedValue(versionSearchTerm);
+  const debouncedVersionSolutionSearchTerm = useDebouncedValue(versionSolutionSearchTerm);
   const { data: solutionsResponse, isLoading: solutionsLoading } = useGetSolutionsQuery({
     search: debouncedSearchTerm,
+    sortBy: catalogSortBy,
+    sortOrder: catalogSortOrder,
+    startDate: catalogStartDate || undefined,
+    endDate: catalogEndDate || undefined,
     page: catalogPage,
     limit: catalogPageSize,
   });
-  const { data: allSolutionsResponse } = useGetSolutionsQuery({ page: 1, limit: 100 });
+  const { data: allSolutionsResponse } = useGetSolutionsQuery({
+    search: debouncedVersionSolutionSearchTerm,
+    page: 1,
+    limit: 50,
+  });
+  const solutions = solutionsResponse?.items ?? [];
+  const allSolutions = allSolutionsResponse?.items ?? solutions;
+  const effectiveActiveSolutionId = useMemo(() => {
+    const hasExplicitSelection =
+      activeSolutionId.length > 0 &&
+      (allSolutions.some((solution) => solution.id === activeSolutionId) ||
+        solutions.some((solution) => solution.id === activeSolutionId));
+    if (hasExplicitSelection) return activeSolutionId;
+    return solutions[0]?.id ?? "";
+  }, [activeSolutionId, allSolutions, solutions]);
   const { data: versionsResponse, isLoading: versionsLoading } = useGetSolutionVersionsQuery(
     {
-      solutionId: activeSolutionId,
+      solutionId: effectiveActiveSolutionId,
       search: debouncedVersionSearchTerm,
+      sortBy: versionSortBy,
+      sortOrder: versionSortOrder,
+      startDate: versionStartDate || undefined,
+      endDate: versionEndDate || undefined,
       page: versionPage,
       limit: versionPageSize,
     },
     {
-      skip: !activeSolutionId,
+      skip: !effectiveActiveSolutionId,
     },
   );
-  const solutions = solutionsResponse?.items ?? [];
-  const allSolutions = allSolutionsResponse?.items ?? solutions;
   const versions = versionsResponse?.items ?? [];
   const catalogTotalPages = solutionsResponse?.pagination.totalPages ?? 0;
   const catalogTotalItems = solutionsResponse?.pagination.total ?? 0;
@@ -112,12 +143,6 @@ export default function SolutionsPage() {
     },
   });
 
-  useEffect(() => {
-    if (!activeSolutionId && solutions.length > 0) {
-      setActiveSolutionId(solutions[0].id);
-    }
-  }, [activeSolutionId, solutions]);
-
   const versionSolutionOptions = useMemo(
     () =>
       allSolutions.map((solution) => ({
@@ -129,8 +154,8 @@ export default function SolutionsPage() {
   );
 
   const activeSolution =
-    allSolutions.find((solution) => solution.id === activeSolutionId) ??
-    solutions.find((solution) => solution.id === activeSolutionId) ??
+    allSolutions.find((solution) => solution.id === effectiveActiveSolutionId) ??
+    solutions.find((solution) => solution.id === effectiveActiveSolutionId) ??
     null;
 
   const onSolutionSubmit = solutionForm.handleSubmit(async (values) => {
@@ -171,6 +196,7 @@ export default function SolutionsPage() {
       showToast({ type: "success", title: "Solution version created", description: message });
       setActiveSolutionId(values.solutionId);
       setOpenVersionModal(false);
+      setVersionSolutionSearchTerm("");
     } catch (error) {
       const message = getErrorMessage(error, "Failed to create version.");
       setBanner({ type: "error", text: message });
@@ -186,7 +212,14 @@ export default function SolutionsPage() {
         action={
           isAdmin ? (
             <div className="flex w-full flex-wrap gap-2 md:w-auto">
-              <Button className="w-full sm:w-auto" variant="secondary" onClick={() => setOpenVersionModal(true)}>
+              <Button
+                className="w-full sm:w-auto"
+                variant="secondary"
+                onClick={() => {
+                  setVersionSolutionSearchTerm("");
+                  setOpenVersionModal(true);
+                }}
+              >
                 New Version
               </Button>
               <Button className="w-full sm:w-auto" onClick={() => setOpenSolutionModal(true)}>New Solution</Button>
@@ -213,6 +246,60 @@ export default function SolutionsPage() {
             placeholder="Search solutions by name"
           />
         </div>
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1">
+            <Label htmlFor="solutionsSortBy">Sort By</Label>
+            <Select
+              id="solutionsSortBy"
+              value={catalogSortBy}
+              onChange={(event) => {
+                setCatalogSortBy(event.target.value);
+                setCatalogPage(1);
+              }}
+            >
+              <option value="name">Name</option>
+              <option value="createdAt">Created Date</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="solutionsSortOrder">Sort Order</Label>
+            <Select
+              id="solutionsSortOrder"
+              value={catalogSortOrder}
+              onChange={(event) => {
+                setCatalogSortOrder(event.target.value as "asc" | "desc");
+                setCatalogPage(1);
+              }}
+            >
+              <option value="asc">A to Z / Oldest</option>
+              <option value="desc">Z to A / Newest</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="solutionsStartDate">Start Date</Label>
+            <Input
+              id="solutionsStartDate"
+              type="date"
+              value={catalogStartDate}
+              onChange={(event) => {
+                setCatalogStartDate(event.target.value);
+                setCatalogPage(1);
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="solutionsEndDate">End Date</Label>
+            <Input
+              id="solutionsEndDate"
+              type="date"
+              value={catalogEndDate}
+              onChange={(event) => {
+                setCatalogEndDate(event.target.value);
+                setCatalogPage(1);
+              }}
+            />
+          </div>
+        </div>
         {solutionsLoading ? (
           <TableSkeleton rows={5} />
         ) : solutions.length === 0 ? (
@@ -230,13 +317,13 @@ export default function SolutionsPage() {
                   <DataCell>
                     <Button
                       size="sm"
-                      variant={solution.id === activeSolutionId ? "primary" : "secondary"}
+                      variant={solution.id === effectiveActiveSolutionId ? "primary" : "secondary"}
                       onClick={() => {
                         setActiveSolutionId(solution.id);
                         setVersionPage(1);
                       }}
                     >
-                      {solution.id === activeSolutionId ? "Selected" : "View Versions"}
+                      {solution.id === effectiveActiveSolutionId ? "Selected" : "View Versions"}
                     </Button>
                   </DataCell>
                 </DataRow>
@@ -268,7 +355,7 @@ export default function SolutionsPage() {
           }
         />
 
-        {!activeSolutionId || versionsLoading ? null : (
+        {!effectiveActiveSolutionId || versionsLoading ? null : (
           <div className="mb-4 flex items-center gap-2">
             <Search className="h-4 w-4 text-slate-400" />
             <Input
@@ -281,10 +368,66 @@ export default function SolutionsPage() {
             />
           </div>
         )}
+        {!effectiveActiveSolutionId ? null : (
+          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1">
+              <Label htmlFor="versionsSortBy">Sort By</Label>
+              <Select
+                id="versionsSortBy"
+                value={versionSortBy}
+                onChange={(event) => {
+                  setVersionSortBy(event.target.value);
+                  setVersionPage(1);
+                }}
+              >
+                <option value="validFrom">Valid From</option>
+                <option value="createdAt">Created Date</option>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="versionsSortOrder">Sort Order</Label>
+              <Select
+                id="versionsSortOrder"
+                value={versionSortOrder}
+                onChange={(event) => {
+                  setVersionSortOrder(event.target.value as "asc" | "desc");
+                  setVersionPage(1);
+                }}
+              >
+                <option value="desc">Newest first</option>
+                <option value="asc">Oldest first</option>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="versionsStartDate">Start Date</Label>
+              <Input
+                id="versionsStartDate"
+                type="date"
+                value={versionStartDate}
+                onChange={(event) => {
+                  setVersionStartDate(event.target.value);
+                  setVersionPage(1);
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="versionsEndDate">End Date</Label>
+              <Input
+                id="versionsEndDate"
+                type="date"
+                value={versionEndDate}
+                onChange={(event) => {
+                  setVersionEndDate(event.target.value);
+                  setVersionPage(1);
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         {versionsLoading ? (
           <TableSkeleton />
-        ) : !activeSolutionId ? (
+        ) : !effectiveActiveSolutionId ? (
           <EmptyState
             title="Select a solution"
             description="Choose a solution by name to see its version history."
@@ -366,6 +509,8 @@ export default function SolutionsPage() {
                   id="versionSolutionId"
                   value={field.value ?? ""}
                   onChange={field.onChange}
+                  searchValue={versionSolutionSearchTerm}
+                  onSearchChange={setVersionSolutionSearchTerm}
                   options={versionSolutionOptions}
                   placeholder="Select a solution"
                   searchPlaceholder="Search solutions..."
@@ -398,12 +543,12 @@ export default function SolutionsPage() {
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
+            <div className="space-y-1 sm:col-span-2">
               <Label htmlFor="validFrom">Valid From</Label>
               <Input id="validFrom" type="date" {...versionForm.register("validFrom")} />
               <FieldError message={versionForm.formState.errors.validFrom?.message} />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 sm:col-span-2">
               <Label htmlFor="validTo">Valid To</Label>
               <Input id="validTo" type="date" {...versionForm.register("validTo")} />
               <FieldError message={versionForm.formState.errors.validTo?.message} />
