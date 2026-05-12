@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
   },
+  httpAgentOptions: {
+    keepAlive: false,
+  },
   async rewrites() {
     return [
       {

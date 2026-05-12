@@ -123,8 +123,48 @@ const rawBaseQuery = fetchBaseQuery({
   },
 });
 
+const RETRYABLE_AUTH_PATHS = new Set(["/users/login", "/users/refresh", "/users/logout"]);
+const MAX_AUTH_FETCH_RETRIES = 2;
+const AUTH_RETRY_BASE_DELAY_MS = 400;
+
 function getRequestUrl(args: string | FetchArgs) {
   return typeof args === "string" ? args : args.url;
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableFetchError(error?: FetchBaseQueryError) {
+  if (!error || error.status !== "FETCH_ERROR") return false;
+  const message = String(("error" in error ? error.error : "") ?? "").toLowerCase();
+  return (
+    message.includes("socket hang up") ||
+    message.includes("econnreset") ||
+    message.includes("fetch failed") ||
+    message.includes("failed to fetch")
+  );
+}
+
+async function executeWithAuthRetry(
+  args: string | FetchArgs,
+  api: Parameters<typeof rawBaseQuery>[1],
+  extraOptions: Parameters<typeof rawBaseQuery>[2],
+) {
+  const url = getRequestUrl(args);
+  const shouldRetry = RETRYABLE_AUTH_PATHS.has(url);
+  let result = await rawBaseQuery(args, api, extraOptions);
+
+  if (!shouldRetry) {
+    return result;
+  }
+
+  for (let attempt = 1; attempt <= MAX_AUTH_FETCH_RETRIES && isRetryableFetchError(result.error); attempt += 1) {
+    await wait(AUTH_RETRY_BASE_DELAY_MS * attempt);
+    result = await rawBaseQuery(args, api, extraOptions);
+  }
+
+  return result;
 }
 
 const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
@@ -132,7 +172,7 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
   api,
   extraOptions,
 ) => {
-  let result = await rawBaseQuery(args, api, extraOptions);
+  let result = await executeWithAuthRetry(args, api, extraOptions);
   const url = getRequestUrl(args);
 
   if (result.error?.status !== 401 || url === "/users/login" || url === "/users/refresh") {
@@ -145,7 +185,7 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
     return result;
   }
 
-  const refreshResult = await rawBaseQuery(
+  const refreshResult = await executeWithAuthRetry(
     {
       url: "/users/refresh",
       method: "POST",
@@ -157,7 +197,7 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
 
   if (refreshResult.data) {
     setAuthTokens(refreshResult.data as LoginResponse);
-    result = await rawBaseQuery(args, api, extraOptions);
+    result = await executeWithAuthRetry(args, api, extraOptions);
   } else {
     clearAuthTokens();
   }
@@ -514,7 +554,7 @@ export const pvApi = createApi({
           return { data: { user: null } };
         }
 
-        const refreshResult = await rawBaseQuery(
+        const refreshResult = await executeWithAuthRetry(
           {
             url: "/users/refresh",
             method: "POST",
@@ -536,7 +576,7 @@ export const pvApi = createApi({
     }),
     login: builder.mutation<SessionResponse, LoginRequest>({
       async queryFn(body, api, extraOptions) {
-        const result = await rawBaseQuery(
+        const result = await executeWithAuthRetry(
           {
             url: "/users/login",
             method: "POST",
@@ -557,7 +597,7 @@ export const pvApi = createApi({
     }),
     refreshSession: builder.mutation<LoginResponse, RefreshRequest>({
       async queryFn(body, api, extraOptions) {
-        const result = await rawBaseQuery(
+        const result = await executeWithAuthRetry(
           {
             url: "/users/refresh",
             method: "POST",
@@ -587,7 +627,7 @@ export const pvApi = createApi({
       async queryFn(_arg, api, extraOptions) {
         const refreshToken = getRefreshToken();
         if (refreshToken) {
-          await rawBaseQuery(
+          await executeWithAuthRetry(
             {
               url: "/users/logout",
               method: "POST",

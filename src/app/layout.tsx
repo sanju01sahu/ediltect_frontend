@@ -35,7 +35,7 @@ export default function RootLayout({
       className={`${spaceGrotesk.variable} ${sourceCodePro.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full bg-background text-foreground">
+      <body className="min-h-full bg-background text-foreground" suppressHydrationWarning>
         <ThemeProvider>
           <StoreProvider>{children}</StoreProvider>
         </ThemeProvider>

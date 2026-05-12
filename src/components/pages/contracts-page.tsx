@@ -286,10 +286,10 @@ export default function ContractsPage() {
 
                 return (
                   <DataRow key={item.id}>
-                    <DataCell className="font-medium">{getCustomerDisplayName(item.customerDetails)}</DataCell>
-                    <DataCell>{agentName ?? formatCompactId(item.agentId)}</DataCell>
-                    <DataCell>{formatDate(item.installationDate)}</DataCell>
-                    <DataCell>
+                    <DataCell label="Customer" className="font-medium">{getCustomerDisplayName(item.customerDetails)}</DataCell>
+                    <DataCell label="Agent">{agentName ?? formatCompactId(item.agentId)}</DataCell>
+                    <DataCell label="Installation">{formatDate(item.installationDate)}</DataCell>
+                    <DataCell label="Status">
                       <Badge
                         variant={
                           item.status === "COMPLETED"
@@ -302,8 +302,8 @@ export default function ContractsPage() {
                         {item.status}
                       </Badge>
                     </DataCell>
-                    <DataCell>{solutionName ?? "Unknown solution"}</DataCell>
-                    <DataCell>{formatCompactId(item.solutionVersionId)}</DataCell>
+                    <DataCell label="Solution">{solutionName ?? "Unknown solution"}</DataCell>
+                    <DataCell label="Version">{formatCompactId(item.solutionVersionId)}</DataCell>
                   </DataRow>
                 );
               })}

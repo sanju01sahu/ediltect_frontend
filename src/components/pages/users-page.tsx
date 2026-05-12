@@ -363,15 +363,15 @@ export default function UsersPage() {
             <DataTable columns={["Name", "Email", "Role", "Manager", "Team size", "Created", "Actions"]}>
               {users.map((user) => (
                 <DataRow key={user.id}>
-                  <DataCell className="font-medium">{user.name}</DataCell>
-                  <DataCell>{user.email}</DataCell>
-                  <DataCell>
+                  <DataCell label="Name" className="font-medium">{user.name}</DataCell>
+                  <DataCell label="Email">{user.email}</DataCell>
+                  <DataCell label="Role">
                     <Badge variant={roleBadge(user.role)}>{user.role}</Badge>
                   </DataCell>
-                  <DataCell>{user.manager?.name ?? "-"}</DataCell>
-                  <DataCell>{user.team?.length ?? 0}</DataCell>
-                  <DataCell>{new Date(user.createdAt).toLocaleDateString()}</DataCell>
-                  <DataCell>
+                  <DataCell label="Manager">{user.manager?.name ?? "-"}</DataCell>
+                  <DataCell label="Team size">{user.team?.length ?? 0}</DataCell>
+                  <DataCell label="Created">{new Date(user.createdAt).toLocaleDateString()}</DataCell>
+                  <DataCell label="Actions">
                     {isAdmin ? (
                       <Button size="sm" variant="secondary" onClick={() => openUpdateForUser(user.id)}>
                         <PencilLine className="h-3.5 w-3.5" />

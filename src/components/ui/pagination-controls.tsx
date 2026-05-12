@@ -31,19 +31,21 @@ export function PaginationControls({
       <p className="text-sm text-slate-500 dark:text-slate-400">
         Showing {from}-{to} of {totalItems} {itemLabel}
       </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <Select
-          className="h-11 w-[88px] sm:h-9"
-          value={String(pageSize)}
-          onChange={(event) => onPageSizeChange(Number(event.target.value))}
-          aria-label="Rows per page"
-        >
-          {PAGE_SIZES.map((size) => (
-            <option key={size} value={size}>
-              {size}/page
-            </option>
-          ))}
-        </Select>
+      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+        <div className="w-22">
+          <Select
+            className="h-11 sm:h-9"
+            value={String(pageSize)}
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+            aria-label="Rows per page"
+          >
+            {PAGE_SIZES.map((size) => (
+              <option key={size} value={size}>
+                {size}/page
+              </option>
+            ))}
+          </Select>
+        </div>
         <Button
           variant="secondary"
           size="sm"

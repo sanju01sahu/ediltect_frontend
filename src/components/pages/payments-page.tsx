@@ -306,14 +306,14 @@ export default function PaymentsPage() {
             <DataTable columns={["Payment", "User", "Total", "Effective Status", "Transactions", "Created"]}>
               {payments.map((item) => (
                 <DataRow key={item.id}>
-                  <DataCell className="font-medium">{formatCompactId(item.id)}</DataCell>
-                  <DataCell>{item.user?.name ?? userLookup.get(item.userId)?.name ?? formatCompactId(item.userId)}</DataCell>
-                  <DataCell>{formatCurrency(item.totalAmount)}</DataCell>
-                  <DataCell>
+                  <DataCell label="Payment" className="font-medium">{formatCompactId(item.id)}</DataCell>
+                  <DataCell label="User">{item.user?.name ?? userLookup.get(item.userId)?.name ?? formatCompactId(item.userId)}</DataCell>
+                  <DataCell label="Total">{formatCurrency(item.totalAmount)}</DataCell>
+                  <DataCell label="Effective Status">
                     <Badge variant={statusVariant(item.effectiveStatus)}>{item.effectiveStatus}</Badge>
                   </DataCell>
-                  <DataCell>{item.transactions.length}</DataCell>
-                  <DataCell>{formatDate(item.createdAt)}</DataCell>
+                  <DataCell label="Transactions">{item.transactions.length}</DataCell>
+                  <DataCell label="Created">{formatDate(item.createdAt)}</DataCell>
                 </DataRow>
               ))}
             </DataTable>

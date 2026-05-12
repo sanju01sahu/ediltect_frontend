@@ -147,7 +147,11 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         const searchSectionHeight = searchable ? 56 : 0;
         const chromeHeight = 16;
         const listMaxHeight = Math.max(96, panelTarget - searchSectionHeight - chromeHeight);
-        const panelMaxHeight = listMaxHeight + searchSectionHeight + chromeHeight;
+        const optionCount = Math.max(filteredOptions.length, 1);
+        const optionRowHeight = 44;
+        const listEstimatedHeight = Math.min(optionCount * optionRowHeight, listMaxHeight);
+        const panelEstimatedHeight = listEstimatedHeight + searchSectionHeight + chromeHeight;
+        const panelMaxHeight = Math.min(panelTarget, panelEstimatedHeight);
         const top = prefersAbove
           ? Math.max(gutter, rect.top - gap - panelMaxHeight)
           : Math.max(gutter, rect.bottom + gap);
@@ -168,7 +172,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         window.removeEventListener("resize", updatePosition);
         window.removeEventListener("scroll", updatePosition, true);
       };
-    }, [open, searchable]);
+    }, [filteredOptions.length, open, searchable]);
 
     React.useEffect(() => {
       function onPointerDown(event: MouseEvent) {

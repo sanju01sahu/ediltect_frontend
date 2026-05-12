@@ -312,9 +312,9 @@ export default function SolutionsPage() {
             <DataTable columns={["Solution", "Created", "Select"]}>
               {solutions.map((solution) => (
                 <DataRow key={solution.id}>
-                  <DataCell className="font-medium">{solution.name}</DataCell>
-                  <DataCell>{new Date(solution.createdAt).toLocaleDateString()}</DataCell>
-                  <DataCell>
+                  <DataCell label="Solution" className="font-medium">{solution.name}</DataCell>
+                  <DataCell label="Created">{new Date(solution.createdAt).toLocaleDateString()}</DataCell>
+                  <DataCell label="Select">
                     <Button
                       size="sm"
                       variant={solution.id === effectiveActiveSolutionId ? "primary" : "secondary"}
@@ -442,11 +442,11 @@ export default function SolutionsPage() {
             <DataTable columns={["Version", "Price", "Base Commission", "Valid From", "Valid To"]}>
               {versions.map((version) => (
                 <DataRow key={version.id}>
-                  <DataCell className="font-medium">{formatCompactId(version.id)}</DataCell>
-                  <DataCell>{formatCurrency(version.price)}</DataCell>
-                  <DataCell>{formatCurrency(version.baseCommission)}</DataCell>
-                  <DataCell>{new Date(version.validFrom).toLocaleDateString()}</DataCell>
-                  <DataCell>
+                  <DataCell label="Version" className="font-medium">{formatCompactId(version.id)}</DataCell>
+                  <DataCell label="Price">{formatCurrency(version.price)}</DataCell>
+                  <DataCell label="Base Commission">{formatCurrency(version.baseCommission)}</DataCell>
+                  <DataCell label="Valid From">{new Date(version.validFrom).toLocaleDateString()}</DataCell>
+                  <DataCell label="Valid To">
                     {version.validTo ? (
                       new Date(version.validTo).toLocaleDateString()
                     ) : (

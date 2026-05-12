@@ -70,7 +70,7 @@ export default function LoginForm() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(56,189,248,.35),transparent_30%),radial-gradient(circle_at_15%_80%,rgba(245,158,11,.22),transparent_35%)]" />
           <div className="relative">
             <div className="flex items-center gap-2">
-              <Image src="/solar.png" alt="Photovoltaic logo" width={24} height={24} className="rounded-md" />
+              <Image src="/solar.png" alt="Photovoltaic logo" width={24} height={24} className="h-6 w-6 rounded-md" />
               <p className="break-words text-[10px] uppercase leading-5 tracking-[0.14em] text-sky-300 sm:text-xs sm:tracking-[0.22em]">
                 Photovoltaic Sales Network Management Platform
               </p>

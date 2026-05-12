@@ -67,7 +67,7 @@ export function AppShell({
         >
           <div className="mb-6 flex items-center justify-between lg:justify-start">
             <Link href="/" className="flex min-w-0 items-center gap-2 text-slate-900 dark:text-slate-100">
-              <Image src="/solar.png" alt="Photovoltaic logo" width={28} height={28} className="rounded-md" />
+              <Image src="/solar.png" alt="Photovoltaic logo" width={28} height={28} className="h-7 w-7 rounded-md" />
               <span className="min-w-0 break-words text-[11px] font-semibold leading-tight tracking-tight sm:text-sm">
                 Photovoltaic Sales Network Management Platform
               </span>

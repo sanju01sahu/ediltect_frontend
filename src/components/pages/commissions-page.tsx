@@ -115,7 +115,7 @@ export default function CommissionsPage() {
       />
 
       {canSeeAll ? (
-        <Card className="relative z-20 mb-4">
+        <Card className="relative z-10 mb-4">
           <CardHeader title="User Filter" description="Inspect commissions by selecting a user from the directory." />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-1">
@@ -138,6 +138,7 @@ export default function CommissionsPage() {
             </div>
             <div className="flex gap-2">
               <Button
+                className="flex-1 sm:flex-none"
                 variant="secondary"
                 onClick={() => {
                   setActiveFilter(userIdFilter || null);
@@ -154,6 +155,7 @@ export default function CommissionsPage() {
                 Apply
               </Button>
               <Button
+                className="flex-1 sm:flex-none"
                 variant="ghost"
                 onClick={() => {
                   setUserIdFilter("");
@@ -254,14 +256,14 @@ export default function CommissionsPage() {
                 const user = item.user ?? userLookup.get(item.userId);
                 return (
                   <DataRow key={item.id}>
-                    <DataCell>
+                    <DataCell label="Type">
                       <Badge variant={item.type === "BONUS" ? "success" : "default"}>{item.type}</Badge>
                     </DataCell>
-                    <DataCell>{formatCurrency(item.amount)}</DataCell>
-                    <DataCell>{user?.name ?? formatCompactId(item.userId)}</DataCell>
-                    <DataCell>{item.contract ? getCustomerDisplayName(item.contract.customerDetails) : "-"}</DataCell>
-                    <DataCell>{formatCompactId(item.contractId)}</DataCell>
-                    <DataCell>{formatDate(item.createdAt)}</DataCell>
+                    <DataCell label="Amount">{formatCurrency(item.amount)}</DataCell>
+                    <DataCell label="User">{user?.name ?? formatCompactId(item.userId)}</DataCell>
+                    <DataCell label="Customer">{item.contract ? getCustomerDisplayName(item.contract.customerDetails) : "-"}</DataCell>
+                    <DataCell label="Contract">{formatCompactId(item.contractId)}</DataCell>
+                    <DataCell label="Created">{formatDate(item.createdAt)}</DataCell>
                   </DataRow>
                 );
               })}

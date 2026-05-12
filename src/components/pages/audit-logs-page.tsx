@@ -140,15 +140,15 @@ export default function AuditLogsPage() {
             <DataTable columns={["Time", "Action", "Entity", "Entity ID", "Performed By"]}>
               {logs.map((log) => (
                 <DataRow key={log.id}>
-                  <DataCell>{formatDateTime(log.timestamp)}</DataCell>
-                  <DataCell>
+                  <DataCell label="Time">{formatDateTime(log.timestamp)}</DataCell>
+                  <DataCell label="Action">
                     <Badge variant={log.action === "DELETE" ? "danger" : log.action === "CREATE" ? "success" : "warning"}>
                       {log.action}
                     </Badge>
                   </DataCell>
-                  <DataCell>{log.entityType}</DataCell>
-                  <DataCell>{formatCompactId(log.entityId)}</DataCell>
-                  <DataCell>{userLookup.get(log.performedBy)?.name ?? formatCompactId(log.performedBy)}</DataCell>
+                  <DataCell label="Entity">{log.entityType}</DataCell>
+                  <DataCell label="Entity ID">{formatCompactId(log.entityId)}</DataCell>
+                  <DataCell label="Performed By">{userLookup.get(log.performedBy)?.name ?? formatCompactId(log.performedBy)}</DataCell>
                 </DataRow>
               ))}
             </DataTable>
